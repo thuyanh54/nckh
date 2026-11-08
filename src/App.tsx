@@ -1,65 +1,283 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Activity, ArrowDownRight, ArrowRight, ArrowUpRight, Bell, Check, ChevronDown, ChevronRight, CircleHelp, Download, Ellipsis, FileBarChart, Gauge, House, Leaf, Menu, Package, Pencil, Plus, Search, Settings, ShieldCheck, ShoppingBag, SlidersHorizontal, Sparkles, Sprout, Tag, Trash2, TrendingUp, X } from 'lucide-react'
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, ComposedChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import {
+  Activity,
+  ArrowDownRight,
+  ArrowRight,
+  ArrowUpRight,
+  Bell,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  CircleHelp,
+  Download,
+  Ellipsis,
+  FileBarChart,
+  Gauge,
+  House,
+  Leaf,
+  Menu,
+  Package,
+  Pencil,
+  Plus,
+  Search,
+  Settings,
+  ShieldCheck,
+  ShoppingBag,
+  SlidersHorizontal,
+  Sparkles,
+  Sprout,
+  Tag,
+  Trash2,
+  TrendingUp,
+  X,
+  Store,
+} from 'lucide-react'
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  ComposedChart,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
 import './App.css'
+import './client.css'
 
-type Page = 'overview' | 'pricing' | 'products' | 'reports' | 'settings' | 'help'
-type Category = 'Nội thất' | 'Thời trang' | 'Gia dụng' | 'Văn phòng' | 'Khác'
-type Product = { id: string; name: string; category: Category; image: string; base: number; current: number; stock: number; status: 'Đang bán' | 'Tạm ẩn' }
-type SettingsData = { storeName: string; email: string; phone: string; dynamicPricing: boolean; autoUpdate: boolean; emailAlerts: boolean; lowStockAlerts: boolean; minPrice: number; maxIncrease: number }
-type PricingFactors = { season: number; demand: number; inventory: number; sensitivity: number }
+// Types & Mock Data
+import type {
+  Page,
+  ClientPage,
+  Category,
+  Product,
+  SettingsData,
+  PricingFactors,
+  CartItem,
+  Order,
+  Review,
+  UserProfile,
+} from './types'
+import {
+  seedProducts,
+  seedReviews,
+  seedOrders,
+  categories,
+  money,
+  vouchers,
+} from './data/mockData'
+
+// Client Components
+import { ClientHeader } from './components/client/ClientHeader'
+import { StoreHome } from './components/client/StoreHome'
+import { StoreCatalog } from './components/client/StoreCatalog'
+import { ProductDetailModal } from './components/client/ProductDetailModal'
+import { CartDrawer } from './components/client/CartDrawer'
+import { CheckoutModal } from './components/client/CheckoutModal'
+import { OrderSuccessModal } from './components/client/OrderSuccessModal'
+import { AuthModal } from './components/client/AuthModal'
+import { UserOrdersModal } from './components/client/UserOrdersModal'
+import { WishlistModal } from './components/client/WishlistModal'
+import { ClientFooter } from './components/client/ClientFooter'
+
 const nav: { id: Page; label: string; icon: typeof House }[] = [
-  { id: 'overview', label: 'Tổng quan', icon: House }, { id: 'pricing', label: 'Định giá động', icon: Tag },
-  { id: 'products', label: 'Sản phẩm', icon: ShoppingBag }, { id: 'reports', label: 'Báo cáo', icon: FileBarChart },
-  { id: 'settings', label: 'Cài đặt', icon: Settings }, { id: 'help', label: 'Trợ giúp', icon: CircleHelp },
+  { id: 'overview', label: 'Tổng quan', icon: House },
+  { id: 'orders', label: 'Đơn hàng', icon: ShoppingBag },
+  { id: 'pricing', label: 'Định giá động', icon: Tag },
+  { id: 'products', label: 'Sản phẩm', icon: Package },
+  { id: 'reports', label: 'Báo cáo', icon: FileBarChart },
+  { id: 'settings', label: 'Cài đặt', icon: Settings },
+  { id: 'help', label: 'Trợ giúp', icon: CircleHelp },
 ]
-const categories: Category[] = ['Nội thất', 'Thời trang', 'Gia dụng', 'Văn phòng', 'Khác']
-const img = (id: string) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=720&q=82`
-const seed: Product[] = [
-  { id: 'SM-2401', name: 'Ghế thư giãn Minimal', category: 'Nội thất', image: img('photo-1567538096630-e0c55bd6374c'), base: 2200000, current: 2500000, stock: 18, status: 'Đang bán' },
-  { id: 'SM-2402', name: 'Đèn bàn Hikari', category: 'Nội thất', image: img('photo-1507473885765-e6ed057f782c'), base: 780000, current: 890000, stock: 32, status: 'Đang bán' },
-  { id: 'SM-2403', name: 'Sofa vải cao cấp', category: 'Nội thất', image: img('photo-1555041469-a586c61ea9bc'), base: 11500000, current: 12900000, stock: 7, status: 'Đang bán' },
-  { id: 'SM-2404', name: 'Gối tựa linen', category: 'Nội thất', image: img('photo-1584100936595-c0654b55a2e2'), base: 290000, current: 350000, stock: 24, status: 'Đang bán' },
-  { id: 'SM-2405', name: 'Chậu cây trang trí', category: 'Gia dụng', image: img('photo-1485955900006-10f4d324d411'), base: 210000, current: 250000, stock: 5, status: 'Đang bán' },
-  { id: 'SM-2406', name: 'Bàn trà gỗ sồi', category: 'Nội thất', image: img('photo-1499933374294-4584851497cc'), base: 2850000, current: 3200000, stock: 13, status: 'Đang bán' },
-  { id: 'SM-2407', name: 'Kệ sách mini', category: 'Văn phòng', image: img('photo-1594620302200-9a762244a156'), base: 1580000, current: 1800000, stock: 9, status: 'Đang bán' },
-  { id: 'SM-2408', name: 'Bình hoa decor', category: 'Gia dụng', image: img('photo-1578500494198-246f612d3b3d'), base: 370000, current: 420000, stock: 21, status: 'Đang bán' },
+
+const series = [
+  { d: 'T2', rev: 34, price: 42 },
+  { d: 'T3', rev: 45, price: 40 },
+  { d: 'T4', rev: 39, price: 47 },
+  { d: 'T5', rev: 56, price: 49 },
+  { d: 'T6', rev: 51, price: 53 },
+  { d: 'T7', rev: 69, price: 58 },
+  { d: 'CN', rev: 77, price: 62 },
 ]
-const series = [{ d: 'T2', rev: 34, price: 42 }, { d: 'T3', rev: 45, price: 40 }, { d: 'T4', rev: 39, price: 47 }, { d: 'T5', rev: 56, price: 49 }, { d: 'T6', rev: 51, price: 53 }, { d: 'T7', rev: 69, price: 58 }, { d: 'CN', rev: 77, price: 62 }]
-const months = [{ d: 'T1', v: .94 }, { d: 'T2', v: .97 }, { d: 'T3', v: 1.02 }, { d: 'T4', v: 1.05 }, { d: 'T5', v: 1.08 }, { d: 'T6', v: 1.04 }, { d: 'T7', v: 1.11 }, { d: 'T8', v: 1.15 }, { d: 'T9', v: 1.09 }, { d: 'T10', v: 1.14 }, { d: 'T11', v: 1.18 }, { d: 'T12', v: 1.24 }]
-const money = (v: number) => `${Math.round(v).toLocaleString('vi-VN')}₫`
-function stored<T,>(key: string, fallback: T): T { try { const v = localStorage.getItem(key); return v ? JSON.parse(v) as T : fallback } catch { return fallback } }
+const months = [
+  { d: 'T1', v: 0.94 },
+  { d: 'T2', v: 0.97 },
+  { d: 'T3', v: 1.02 },
+  { d: 'T4', v: 1.05 },
+  { d: 'T5', v: 1.08 },
+  { d: 'T6', v: 1.04 },
+  { d: 'T7', v: 1.11 },
+  { d: 'T8', v: 1.15 },
+  { d: 'T9', v: 1.09 },
+  { d: 'T10', v: 1.14 },
+  { d: 'T11', v: 1.18 },
+  { d: 'T12', v: 1.24 },
+]
+
+function stored<T>(key: string, fallback: T): T {
+  try {
+    const v = localStorage.getItem(key)
+    return v ? (JSON.parse(v) as T) : fallback
+  } catch {
+    return fallback
+  }
+}
 
 function App() {
-  const [page, setPage] = useState<Page>('overview'), [items, setItems] = useState(() => stored('shopmart-products', seed))
-  const [query, setQuery] = useState(''), [category, setCategory] = useState('Tất cả'), [stock, setStock] = useState('Tất cả tồn kho')
-  const [tab, setTab] = useState('Quản lý giá'), [toast, setToast] = useState(''), [modal, setModal] = useState<'add' | 'edit' | 'detail' | null>(null)
-  const [selected, setSelected] = useState<Product | null>(null), [mobile, setMobile] = useState(false), [notice, setNotice] = useState(false), [account, setAccount] = useState(false)
-  const [season, setSeason] = useState(() => stored('shopmart-season', 1.08)), [demand, setDemand] = useState(() => stored('shopmart-demand', 1.12)), [inventory, setInventory] = useState(() => stored('shopmart-inventory', .96)), [sensitivity, setSensitivity] = useState(() => stored('shopmart-sensitivity', .8))
-  const [period, setPeriod] = useState('Tháng này'), [faq, setFaq] = useState(0)
-  const [settings, setSettings] = useState<SettingsData>(() => stored('shopmart-settings', { storeName: 'ShopMart', email: 'support@shopmart.vn', phone: '0123 456 789', dynamicPricing: true, autoUpdate: false, emailAlerts: true, lowStockAlerts: true, minPrice: 100000, maxIncrease: 15 }))
-  useEffect(() => { localStorage.setItem('shopmart-products', JSON.stringify(items)) }, [items])
-  useEffect(() => { localStorage.setItem('shopmart-settings', JSON.stringify(settings)) }, [settings])
-  useEffect(() => { localStorage.setItem('shopmart-season', JSON.stringify(season)) }, [season])
-  useEffect(() => { localStorage.setItem('shopmart-demand', JSON.stringify(demand)) }, [demand])
-  useEffect(() => { localStorage.setItem('shopmart-inventory', JSON.stringify(inventory)) }, [inventory])
-  useEffect(() => { localStorage.setItem('shopmart-sensitivity', JSON.stringify(sensitivity)) }, [sensitivity])
-  useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(''), 2600); return () => clearTimeout(t) }, [toast])
-  const filtered = useMemo(() => items.filter((p) => `${p.name} ${p.id} ${p.category}`.toLowerCase().includes(query.toLowerCase()) && (category === 'Tất cả' || p.category === category) && (stock === 'Tất cả tồn kho' || (stock === 'Sắp hết' ? p.stock < 10 : p.stock >= 10))), [items, query, category, stock])
+  // Global view switcher: 'client' (Customer Storefront) vs 'admin' (Dashboard)
+  const [viewMode, setViewMode] = useState<'client' | 'admin'>('client')
+
+  // Shared store state
+  const [items, setItems] = useState<Product[]>(() => {
+    const existing = stored<Product[]>('shopmart-products', seedProducts)
+    if (!existing || existing.length < seedProducts.length) {
+      return seedProducts
+    }
+    return existing
+  })
+  const [orders, setOrders] = useState<Order[]>(() => {
+    const existing = stored<Order[]>('shopmart-orders', seedOrders)
+    return existing.map((o) =>
+      o.customerName.includes('Hải Đăng')
+        ? { ...o, customerName: 'Ngọc Ngân', email: 'ngocngan@gmail.com' }
+        : o
+    )
+  })
+  const [reviews, setReviews] = useState<Review[]>(() => stored('shopmart-reviews', seedReviews))
+  const [cart, setCart] = useState<CartItem[]>(() => stored('shopmart-cart', []))
+  const [wishlist, setWishlist] = useState<string[]>(() => stored('shopmart-wishlist', ['SM-2401', 'SM-2403']))
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
+    const u = stored<UserProfile | null>('shopmart-user', null)
+    if (u && u.name.includes('Hải Đăng')) {
+      return { ...u, name: 'Ngọc Ngân', email: 'ngocngan@gmail.com' }
+    }
+    return u
+  })
+
+  // Admin state
+  const [page, setPage] = useState<Page>('overview')
+  const [query, setQuery] = useState('')
+  const [category, setCategory] = useState('Tất cả')
+  const [stock, setStock] = useState('Tất cả tồn kho')
+  const [tab, setTab] = useState('Quản lý giá')
+  const [toast, setToast] = useState('')
+  const [modal, setModal] = useState<'add' | 'edit' | 'detail' | null>(null)
+  const [selected, setSelected] = useState<Product | null>(null)
+  const [mobile, setMobile] = useState(false)
+  const [notice, setNotice] = useState(false)
+  const [account, setAccount] = useState(false)
+  const [season, setSeason] = useState(() => stored('shopmart-season', 1.08))
+  const [demand, setDemand] = useState(() => stored('shopmart-demand', 1.12))
+  const [inventory, setInventory] = useState(() => stored('shopmart-inventory', 0.96))
+  const [sensitivity, setSensitivity] = useState(() => stored('shopmart-sensitivity', 0.8))
+  const [period, setPeriod] = useState('Tháng này')
+  const [faq, setFaq] = useState(0)
+  const [settings, setSettings] = useState<SettingsData>(() =>
+    stored('shopmart-settings', {
+      storeName: 'ShopMart',
+      email: 'support@shopmart.vn',
+      phone: '0123 456 789',
+      dynamicPricing: true,
+      autoUpdate: false,
+      emailAlerts: true,
+      lowStockAlerts: true,
+      minPrice: 100000,
+      maxIncrease: 15,
+    })
+  )
+
+  // Client UI state
+  const [clientPage, setClientPage] = useState<ClientPage>('home')
+  const [clientSearchQuery, setClientSearchQuery] = useState('')
+  const [clientCategory, setClientCategory] = useState('Tất cả')
+  const [detailProduct, setDetailProduct] = useState<Product | null>(null)
+  const [isCartOpen, setIsCartOpen] = useState(false)
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false)
+  const [checkoutVoucher, setCheckoutVoucher] = useState<typeof vouchers[0] | null>(null)
+  const [lastPlacedOrder, setLastPlacedOrder] = useState<Order | null>(null)
+  const [isAuthOpen, setIsAuthOpen] = useState(false)
+  const [isOrdersOpen, setIsOrdersOpen] = useState(false)
+  const [isWishlistOpen, setIsWishlistOpen] = useState(false)
+
+  // LocalStorage sync effects
+  useEffect(() => {
+    localStorage.setItem('shopmart-products', JSON.stringify(items))
+  }, [items])
+  useEffect(() => {
+    localStorage.setItem('shopmart-orders', JSON.stringify(orders))
+  }, [orders])
+  useEffect(() => {
+    localStorage.setItem('shopmart-reviews', JSON.stringify(reviews))
+  }, [reviews])
+  useEffect(() => {
+    localStorage.setItem('shopmart-cart', JSON.stringify(cart))
+  }, [cart])
+  useEffect(() => {
+    localStorage.setItem('shopmart-wishlist', JSON.stringify(wishlist))
+  }, [wishlist])
+  useEffect(() => {
+    if (currentUser) localStorage.setItem('shopmart-user', JSON.stringify(currentUser))
+    else localStorage.removeItem('shopmart-user')
+  }, [currentUser])
+  useEffect(() => {
+    localStorage.setItem('shopmart-settings', JSON.stringify(settings))
+  }, [settings])
+  useEffect(() => {
+    localStorage.setItem('shopmart-season', JSON.stringify(season))
+  }, [season])
+  useEffect(() => {
+    localStorage.setItem('shopmart-demand', JSON.stringify(demand))
+  }, [demand])
+  useEffect(() => {
+    localStorage.setItem('shopmart-inventory', JSON.stringify(inventory))
+  }, [inventory])
+  useEffect(() => {
+    localStorage.setItem('shopmart-sensitivity', JSON.stringify(sensitivity))
+  }, [sensitivity])
+  useEffect(() => {
+    if (!toast) return
+    const t = setTimeout(() => setToast(''), 2800)
+    return () => clearTimeout(t)
+  }, [toast])
+
+  // Filtered products for admin
+  const filtered = useMemo(
+    () =>
+      items.filter(
+        (p) =>
+          `${p.name} ${p.id} ${p.category}`.toLowerCase().includes(query.toLowerCase()) &&
+          (category === 'Tất cả' || p.category === category) &&
+          (stock === 'Tất cả tồn kho' || (stock === 'Sắp hết' ? p.stock < 10 : p.stock >= 10))
+      ),
+    [items, query, category, stock]
+  )
+
+  // Dynamic pricing calculation
   const suggested = (p: Product) => {
     if (!settings.dynamicPricing) return p.current
-    const calculated = p.base * (1 + ((season * demand * (p.stock < 8 ? inventory * .95 : inventory)) - 1) * sensitivity)
+    const calculated =
+      p.base * (1 + (season * demand * (p.stock < 8 ? inventory * 0.95 : inventory) - 1) * sensitivity)
     return Math.max(settings.minPrice, Math.min(p.base * (1 + settings.maxIncrease / 100), calculated))
   }
+
   const applyAutomaticPrices = (rules: SettingsData, factors: PricingFactors) => {
     if (!rules.autoUpdate || !rules.dynamicPricing) return
-    setItems((current: Product[]) => current.map((product) => {
-      const stockFactor = product.stock < 8 ? factors.inventory * .95 : factors.inventory
-      const calculated = product.base * (1 + ((factors.season * factors.demand * stockFactor) - 1) * factors.sensitivity)
-      const ceiling = product.base * (1 + rules.maxIncrease / 100)
-      return { ...product, current: Math.max(rules.minPrice, Math.min(ceiling, calculated)) }
-    }))
+    setItems((current: Product[]) =>
+      current.map((product) => {
+        const stockFactor = product.stock < 8 ? factors.inventory * 0.95 : factors.inventory
+        const calculated =
+          product.base * (1 + (factors.season * factors.demand * stockFactor - 1) * factors.sensitivity)
+        const ceiling = product.base * (1 + rules.maxIncrease / 100)
+        return { ...product, current: Math.max(rules.minPrice, Math.min(ceiling, calculated)) }
+      })
+    )
   }
+
   const updateFactors = (change: Partial<PricingFactors>) => {
     const factors = { season, demand, inventory, sensitivity, ...change }
     if (change.season !== undefined) setSeason(change.season)
@@ -68,119 +286,2567 @@ function App() {
     if (change.sensitivity !== undefined) setSensitivity(change.sensitivity)
     applyAutomaticPrices(settings, factors)
   }
+
   const updateSettings = (next: SettingsData) => {
     setSettings(next)
     applyAutomaticPrices(next, { season, demand, inventory, sensitivity })
   }
-  const setPrice = (p: Product) => { setItems((all: Product[]) => all.map((x) => x.id === p.id ? { ...x, current: suggested(p) } : x)); setToast(`Đã cập nhật giá ${p.name}`) }
-  const edit = (p?: Product) => { setSelected(p ?? null); setModal(p ? 'edit' : 'add') }
-  const remove = (p: Product) => { if (confirm(`Xóa sản phẩm “${p.name}”?`)) { setItems((all: Product[]) => all.filter((x) => x.id !== p.id)); setToast('Đã xóa sản phẩm') } }
-  const exportCsv = () => {
-    const rows = [['Mã', 'Sản phẩm', 'Danh mục', 'Giá cơ sở', 'Giá hiện tại', 'Giá đề xuất', 'Tồn kho'], ...items.map((p: Product) => [p.id, p.name, p.category, p.base, p.current, Math.round(suggested(p)), p.stock])]
-    const blob = new Blob(['\ufeff' + rows.map((r) => r.map((v) => `"${String(v).replaceAll('"', '""')}"`).join(',')).join('\n')], { type: 'text/csv;charset=utf-8' })
-    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'shopmart-bao-cao.csv'; a.click(); URL.revokeObjectURL(a.href); setToast('Đã xuất dữ liệu báo cáo')
+
+  const setPrice = (p: Product) => {
+    setItems((all: Product[]) => all.map((x) => (x.id === p.id ? { ...x, current: suggested(p) } : x)))
+    setToast(`Đã cập nhật giá ${p.name}`)
   }
+
+  const edit = (p?: Product) => {
+    setSelected(p ?? null)
+    setModal(p ? 'edit' : 'add')
+  }
+
+  const remove = (p: Product) => {
+    if (confirm(`Xóa sản phẩm “${p.name}”?`)) {
+      setItems((all: Product[]) => all.filter((x) => x.id !== p.id))
+      setToast('Đã xóa sản phẩm')
+    }
+  }
+
+  const exportCsv = () => {
+    const rows = [
+      ['Mã', 'Sản phẩm', 'Danh mục', 'Giá cơ sở', 'Giá hiện tại', 'Giá đề xuất', 'Tồn kho'],
+      ...items.map((p: Product) => [
+        p.id,
+        p.name,
+        p.category,
+        p.base,
+        p.current,
+        Math.round(suggested(p)),
+        p.stock,
+      ]),
+    ]
+    const blob = new Blob(
+      ['\ufeff' + rows.map((r) => r.map((v) => `"${String(v).replaceAll('"', '""')}"`).join(',')).join('\n')],
+      { type: 'text/csv;charset=utf-8' }
+    )
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = 'shopmart-bao-cao.csv'
+    a.click()
+    URL.revokeObjectURL(a.href)
+    setToast('Đã xuất dữ liệu báo cáo')
+  }
+
+  // Cart operations
+  const handleAddToCart = (product: Product, quantity = 1) => {
+    setCart((prev) => {
+      const existing = prev.find((i) => i.product.id === product.id)
+      if (existing) {
+        return prev.map((i) =>
+          i.product.id === product.id
+            ? { ...i, quantity: Math.min(product.stock, i.quantity + quantity) }
+            : i
+        )
+      }
+      return [...prev, { product, quantity }]
+    })
+    setToast(`Đã thêm “${product.name}” vào giỏ hàng`)
+  }
+
+  const handleUpdateCartQty = (productId: string, quantity: number) => {
+    setCart((prev) =>
+      prev.map((i) => (i.product.id === productId ? { ...i, quantity } : i))
+    )
+  }
+
+  const handleRemoveCartItem = (productId: string) => {
+    setCart((prev) => prev.filter((i) => i.product.id !== productId))
+    setToast('Đã xóa sản phẩm khỏi giỏ')
+  }
+
+  // Wishlist operations
+  const handleToggleWishlist = (product: Product) => {
+    setWishlist((prev) => {
+      const exists = prev.includes(product.id)
+      if (exists) {
+        setToast(`Đã bỏ “${product.name}” khỏi yêu thích`)
+        return prev.filter((id) => id !== product.id)
+      } else {
+        setToast(`Đã thêm “${product.name}” vào yêu thích`)
+        return [...prev, product.id]
+      }
+    })
+  }
+
+  // Checkout & Order Placement
+  const handleStartCheckout = (appliedVoucher: typeof vouchers[0] | null) => {
+    setCheckoutVoucher(appliedVoucher)
+    setIsCartOpen(false)
+    setIsCheckoutOpen(true)
+  }
+
+  const handlePlaceOrder = (order: Order) => {
+    // 1. Add order to orders state
+    setOrders((prev) => [order, ...prev])
+    // 2. Deduct product stock in items
+    setItems((prev) =>
+      prev.map((p) => {
+        const itemInOrder = order.items.find((i) => i.product.id === p.id)
+        if (itemInOrder) {
+          return { ...p, stock: Math.max(0, p.stock - itemInOrder.quantity) }
+        }
+        return p
+      })
+    )
+    // 3. Clear cart
+    setCart([])
+    setIsCheckoutOpen(false)
+    setLastPlacedOrder(order)
+    setToast(`Đặt hàng thành công! Mã đơn: ${order.id}`)
+  }
+
+  // Add review
+  const handleAddReview = (newReview: Review) => {
+    setReviews((prev) => [newReview, ...prev])
+    // Update product rating and review count
+    setItems((prev) =>
+      prev.map((p) => {
+        if (p.id === newReview.productId) {
+          const count = (p.reviewCount ?? 20) + 1
+          const rating = Number((((p.rating ?? 4.8) * (count - 1) + newReview.rating) / count).toFixed(1))
+          return { ...p, reviewCount: count, rating }
+        }
+        return p
+      })
+    )
+    setToast('Cảm ơn bạn đã gửi đánh giá sản phẩm!')
+  }
+
+  // Quick buy now
+  const handleBuyNow = (product: Product, quantity = 1) => {
+    handleAddToCart(product, quantity)
+    setDetailProduct(null)
+    setIsCheckoutOpen(true)
+  }
+
   const title = nav.find((x) => x.id === page)?.label
-  return <div className="app-shell">
-    <aside className={`sidebar ${mobile ? 'sidebar-open' : ''}`}>
-      <button className="brand" onClick={() => setPage('overview')}><span className="brand-mark"><ShoppingBag size={21} /></span><span className="brand-name">Shop<span>Mart</span><small>PRICING STUDIO</small></span></button>
-      <div className="side-caption">KHÔNG GIAN QUẢN TRỊ</div><nav className="side-nav">{nav.map(({ id, label, icon: Icon }) => <button key={id} className={`nav-item ${page === id ? 'active' : ''}`} onClick={() => { setPage(id); setMobile(false) }}><Icon size={18} /><span>{label}</span>{page === id && <i className="active-mark" />}</button>)}</nav>
-      <section className="side-channels"><div className="channel-heading">KÊNH BÁN HÀNG <ChevronDown size={13} /></div><button className="channel-item selected" onClick={() => setToast('Bạn đang quản lý ShopMart')}><ShoppingBag size={15} /><span>ShopMart</span><i /></button><button className="channel-item" onClick={() => setToast('Kênh tích hợp sẽ sớm khả dụng')}><ArrowRight size={15} /><span>Tích hợp khác</span></button></section>
-      <div className="sidebar-bottom"><div className="system-status"><i className="status-dot" />Hệ thống hoạt động <span className="status-check"><Check size={12} /></span></div><div className="upgrade-card"><span><Sparkles size={13} /> NÂNG CẤP NGAY</span><p>Mở khóa thêm tính năng mạnh mẽ hơn.</p><button onClick={() => setToast('Gói nâng cấp ShopMart sắp ra mắt')}>Tìm hiểu thêm <ArrowRight size={13} /></button></div></div>
-    </aside>
-    <div className="workspace"><header className="topbar"><button className="icon-button mobile-menu" onClick={() => setMobile(!mobile)} aria-label="Mở menu"><Menu size={19} /></button><div className="crumb"><span>ShopMart</span><ChevronRight size={14} /><b>{title}</b></div><label className="global-search"><Search size={16} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Tìm sản phẩm, đơn hàng, khách hàng..." /><kbd>⌘ K</kbd></label><div className="top-actions"><div className="popover-wrap"><button className="icon-button notification-button" aria-label="Thông báo" onClick={() => setNotice(!notice)}><Bell size={18} /><i /></button>{notice && <div className="popover notification-popover"><b>Thông báo mới</b><p>5 sản phẩm sắp hết hàng</p><p>Doanh thu tăng 12,5%</p><button className="text-action" onClick={() => { setPage('reports'); setNotice(false) }}>Xem báo cáo <ArrowRight size={14} /></button></div>}</div><span className="top-divider" /><div className="popover-wrap"><button className="profile-button" onClick={() => setAccount(!account)}><span className="profile-avatar">TA</span><span className="profile-copy"><b>Thùy Anh</b><small>Quản trị viên</small></span><ChevronDown size={14} /></button>{account && <div className="popover account-popover"><b>Thùy Anh</b><small>admin@shopmart.vn</small><button onClick={() => { setPage('settings'); setAccount(false) }}><Settings size={15} /> Cài đặt tài khoản</button></div>}</div></div></header>
-      <main className="main-content" key={page}>
-        {page === 'overview' && <Overview go={setPage} />}
-        {page === 'products' && <><ProductEditorial setCategory={setCategory} /><Products products={filtered} total={items.length} category={category} setCategory={setCategory} stock={stock} setStock={setStock} edit={edit} detail={(p) => { setSelected(p); setModal('detail') }} remove={remove} suggested={suggested} /></>}
-        {page === 'pricing' && <Pricing products={items} dynamicEnabled={settings.dynamicPricing} tab={tab} setTab={setTab} suggested={suggested} apply={setPrice} season={season} setSeason={(value) => updateFactors({ season: value })} demand={demand} setDemand={(value) => updateFactors({ demand: value })} inventory={inventory} setInventory={(value) => updateFactors({ inventory: value })} sensitivity={sensitivity} setSensitivity={(value) => updateFactors({ sensitivity: value })} toast={setToast} />}
-        {page === 'reports' && <Reports period={period} setPeriod={setPeriod} products={items} exportCsv={exportCsv} />}
-        {page === 'settings' && <SettingsPage settings={settings} setSettings={updateSettings} save={() => setToast('Cài đặt đã được lưu')} />}
-        {page === 'help' && <Help faq={faq} setFaq={setFaq} toast={setToast} />}
-      </main><footer className="page-footer"><span>© 2025 ShopMart Pricing Studio</span><span><i className="footer-pulse" /> Dữ liệu cập nhật vừa xong</span></footer>
+
+  // =========================================================================
+  // VIEW MODE: CLIENT (CUSTOMER PORTAL)
+  // =========================================================================
+  if (viewMode === 'client') {
+    const wishlistProducts = items.filter((p) => wishlist.includes(p.id))
+
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        {/* Client Header */}
+        <ClientHeader
+          currentPage={clientPage}
+          setCurrentPage={setClientPage}
+          cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
+          wishlistCount={wishlist.length}
+          openCart={() => setIsCartOpen(true)}
+          openWishlist={() => setIsWishlistOpen(true)}
+          openAuth={() => setIsAuthOpen(true)}
+          openOrders={() => setIsOrdersOpen(true)}
+          user={currentUser}
+          logout={() => {
+            setCurrentUser(null)
+            setToast('Đã đăng xuất tài khoản')
+          }}
+          onSwitchToAdmin={() => setViewMode('admin')}
+          searchQuery={clientSearchQuery}
+          setSearchQuery={setClientSearchQuery}
+        />
+
+        {/* Client Main Body */}
+        <main className="client-main" style={{ flex: 1, width: '100%' }}>
+          {clientPage === 'home' && (
+            <StoreHome
+              products={items}
+              selectedCategory={clientCategory}
+              setSelectedCategory={setClientCategory}
+              onQuickView={(p) => setDetailProduct(p)}
+              onAddToCart={(p) => handleAddToCart(p, 1)}
+              wishlistIds={wishlist}
+              onToggleWishlist={handleToggleWishlist}
+              setCurrentPage={setClientPage}
+            />
+          )}
+
+          {clientPage === 'catalog' && (
+            <StoreCatalog
+              products={items}
+              searchQuery={clientSearchQuery}
+              setSearchQuery={setClientSearchQuery}
+              onQuickView={(p) => setDetailProduct(p)}
+              onAddToCart={(p) => handleAddToCart(p, 1)}
+              wishlistIds={wishlist}
+              onToggleWishlist={handleToggleWishlist}
+              initialCategory={clientCategory}
+            />
+          )}
+
+          {clientPage === 'bestsellers' && (
+            <StoreCatalog
+              products={items.filter((p) => p.badge === 'Bán chạy' || p.current < p.base || p.stock < 15)}
+              searchQuery={clientSearchQuery}
+              setSearchQuery={setClientSearchQuery}
+              onQuickView={(p) => setDetailProduct(p)}
+              onAddToCart={(p) => handleAddToCart(p, 1)}
+              wishlistIds={wishlist}
+              onToggleWishlist={handleToggleWishlist}
+              initialCategory="Tất cả"
+            />
+          )}
+
+          {clientPage === 'recommended' && (
+            <div>
+              <div
+                style={{
+                  background: 'linear-gradient(135deg, #174b35 0%, #0d2e20 100%)',
+                  padding: '36px 38px',
+                  borderRadius: '14px',
+                  color: '#fff',
+                  marginBottom: '28px',
+                }}
+              >
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: '#cbe4d0', fontSize: '12px', fontWeight: 700, letterSpacing: '1px' }}>
+                  <Sparkles size={16} /> THUẬT TOÁN ĐỀ XUẤT NCKH
+                </div>
+                <h1 style={{ fontFamily: 'var(--serif)', fontSize: '36px', margin: '10px 0 8px' }}>
+                  Gợi ý Tối ưu dành cho bạn
+                </h1>
+                <p style={{ maxWidth: '640px', color: '#bcd0c1', fontSize: '14.5px', lineHeight: 1.6, margin: 0 }}>
+                  Danh sách sản phẩm được chọn lọc dựa trên mô hình định giá động (Dynamic Pricing) và độ phù hợp sở thích của người dùng trong hệ thống ShopMart.
+                </p>
+              </div>
+
+              <StoreCatalog
+                products={items}
+                searchQuery={clientSearchQuery}
+                setSearchQuery={setClientSearchQuery}
+                onQuickView={(p) => setDetailProduct(p)}
+                onAddToCart={(p) => handleAddToCart(p, 1)}
+                wishlistIds={wishlist}
+                onToggleWishlist={handleToggleWishlist}
+                initialCategory="Tất cả"
+              />
+            </div>
+          )}
+        </main>
+
+        {/* Client Footer */}
+        <ClientFooter
+          setCurrentPage={setClientPage}
+          onSwitchToAdmin={() => setViewMode('admin')}
+        />
+
+        {/* Client Modals & Drawers */}
+        {detailProduct && (
+          <ProductDetailModal
+            product={detailProduct}
+            onClose={() => setDetailProduct(null)}
+            onAddToCart={(p, qty) => handleAddToCart(p, qty)}
+            onBuyNow={handleBuyNow}
+            isWishlisted={wishlist.includes(detailProduct.id)}
+            onToggleWishlist={handleToggleWishlist}
+            reviews={reviews}
+            onAddReview={handleAddReview}
+            relatedProducts={items.filter((p) => p.category === detailProduct.category && p.id !== detailProduct.id)}
+            onSelectProduct={(p) => setDetailProduct(p)}
+          />
+        )}
+
+        <CartDrawer
+          isOpen={isCartOpen}
+          onClose={() => setIsCartOpen(false)}
+          items={cart}
+          onUpdateQty={handleUpdateCartQty}
+          onRemoveItem={handleRemoveCartItem}
+          onCheckout={handleStartCheckout}
+        />
+
+        <CheckoutModal
+          isOpen={isCheckoutOpen}
+          onClose={() => setIsCheckoutOpen(false)}
+          items={cart}
+          voucher={checkoutVoucher}
+          user={currentUser}
+          onPlaceOrder={handlePlaceOrder}
+        />
+
+        <OrderSuccessModal
+          order={lastPlacedOrder}
+          onClose={() => setLastPlacedOrder(null)}
+          onViewOrders={() => setIsOrdersOpen(true)}
+        />
+
+        <AuthModal
+          isOpen={isAuthOpen}
+          onClose={() => setIsAuthOpen(false)}
+          onLoginSuccess={(u) => {
+            setCurrentUser(u)
+            setToast(`Chào mừng ${u.name} trở lại!`)
+          }}
+        />
+
+        <UserOrdersModal
+          isOpen={isOrdersOpen}
+          onClose={() => setIsOrdersOpen(false)}
+          orders={orders}
+          onAddToCart={(p) => handleAddToCart(p, 1)}
+        />
+
+        <WishlistModal
+          isOpen={isWishlistOpen}
+          onClose={() => setIsWishlistOpen(false)}
+          wishlistProducts={wishlistProducts}
+          onAddToCart={(p) => handleAddToCart(p, 1)}
+          onRemoveWishlist={handleToggleWishlist}
+        />
+
+        {toast && (
+          <div className="toast">
+            <span>
+              <Check size={15} />
+            </span>
+            {toast}
+            <button onClick={() => setToast('')} aria-label="Đóng">
+              <X size={15} />
+            </button>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // =========================================================================
+  // VIEW MODE: ADMIN (THÙY ANH'S DASHBOARD PRESERVED & ENHANCED)
+  // =========================================================================
+  return (
+    <div className="app-shell">
+      <aside className={`sidebar ${mobile ? 'sidebar-open' : ''}`}>
+        <button className="brand" onClick={() => setPage('overview')}>
+          <span className="brand-mark">
+            <ShoppingBag size={21} />
+          </span>
+          <span className="brand-name">
+            Shop<span>Mart</span>
+            <small>PRICING STUDIO</small>
+          </span>
+        </button>
+
+        {/* Switch to Client Storefront button */}
+        <div style={{ padding: '0 12px 14px' }}>
+          <button
+            onClick={() => setViewMode('client')}
+            style={{
+              width: '100%',
+              background: '#235a3f',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              borderRadius: '6px',
+              padding: '9px 12px',
+              color: '#fff',
+              fontSize: '12.5px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              transition: 'background 0.2s',
+            }}
+          >
+            <Store size={15} /> 🛍️ Xem Cửa hàng Khách
+          </button>
+        </div>
+
+        <div className="side-caption">KHÔNG GIAN QUẢN TRỊ</div>
+        <nav className="side-nav">
+          {nav.map(({ id, label, icon: Icon }) => (
+            <button
+              key={id}
+              className={`nav-item ${page === id ? 'active' : ''}`}
+              onClick={() => {
+                setPage(id)
+                setMobile(false)
+              }}
+            >
+              <Icon size={18} />
+              <span>{label}</span>
+              {id === 'orders' && orders.length > 0 && (
+                <span
+                  style={{
+                    marginLeft: 'auto',
+                    background: '#bd5338',
+                    color: '#fff',
+                    borderRadius: '10px',
+                    padding: '1px 6px',
+                    fontSize: '10px',
+                    fontWeight: 700,
+                  }}
+                >
+                  {orders.length}
+                </span>
+              )}
+              {page === id && <i className="active-mark" />}
+            </button>
+          ))}
+        </nav>
+
+        <section className="side-channels">
+          <div className="channel-heading">
+            KÊNH BÁN HÀNG <ChevronDown size={13} />
+          </div>
+          <button
+            className="channel-item selected"
+            onClick={() => setToast('Bạn đang quản lý ShopMart')}
+          >
+            <ShoppingBag size={15} />
+            <span>ShopMart (Chính)</span>
+            <i />
+          </button>
+          <button
+            className="channel-item"
+            onClick={() => setToast('Kênh tích hợp sẽ sớm khả dụng')}
+          >
+            <ArrowRight size={15} />
+            <span>Tích hợp khác</span>
+          </button>
+        </section>
+
+        <div className="sidebar-bottom">
+          <div className="system-status">
+            <i className="status-dot" />
+            Hệ thống hoạt động{' '}
+            <span className="status-check">
+              <Check size={12} />
+            </span>
+          </div>
+          <div className="upgrade-card">
+            <span>
+              <Sparkles size={13} /> NÂNG CẤP NGAY
+            </span>
+            <p>Mở khóa thêm tính năng mạnh mẽ hơn.</p>
+            <button onClick={() => setToast('Gói nâng cấp ShopMart sắp ra mắt')}>
+              Tìm hiểu thêm <ArrowRight size={13} />
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <div className="workspace">
+        <header className="topbar">
+          <button
+            className="icon-button mobile-menu"
+            onClick={() => setMobile(!mobile)}
+            aria-label="Mở menu"
+          >
+            <Menu size={19} />
+          </button>
+          <div className="crumb">
+            <span>ShopMart</span>
+            <ChevronRight size={14} />
+            <b>{title}</b>
+          </div>
+
+          <label className="global-search">
+            <Search size={16} />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Tìm sản phẩm, đơn hàng, khách hàng..."
+            />
+            <kbd>⌘ K</kbd>
+          </label>
+
+          <div className="top-actions">
+            <button
+              onClick={() => setViewMode('client')}
+              className="button button-outline"
+              style={{ height: '34px', fontSize: '12px' }}
+            >
+              <Store size={14} /> Xem Cửa hàng
+            </button>
+
+            <div className="popover-wrap">
+              <button
+                className="icon-button notification-button"
+                aria-label="Thông báo"
+                onClick={() => setNotice(!notice)}
+              >
+                <Bell size={18} />
+                <i />
+              </button>
+              {notice && (
+                <div className="popover notification-popover">
+                  <b>Thông báo mới</b>
+                  <p>{orders.length} đơn hàng được đặt từ khách</p>
+                  <p>5 sản phẩm sắp hết hàng</p>
+                  <button
+                    className="text-action"
+                    onClick={() => {
+                      setPage('orders')
+                      setNotice(false)
+                    }}
+                  >
+                    Xem đơn hàng <ArrowRight size={14} />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <span className="top-divider" />
+
+            <div className="popover-wrap">
+              <button
+                className="profile-button"
+                onClick={() => setAccount(!account)}
+              >
+                <span className="profile-avatar">TA</span>
+                <span className="profile-copy">
+                  <b>Thùy Anh</b>
+                  <small>Quản trị viên</small>
+                </span>
+                <ChevronDown size={14} />
+              </button>
+              {account && (
+                <div className="popover account-popover">
+                  <b>Thùy Anh</b>
+                  <small>admin@shopmart.vn</small>
+                  <button
+                    onClick={() => {
+                      setPage('settings')
+                      setAccount(false)
+                    }}
+                  >
+                    <Settings size={15} /> Cài đặt tài khoản
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
+
+        <main className="main-content" key={page}>
+          {page === 'overview' && (
+            <Overview go={setPage} totalOrdersCount={orders.length} />
+          )}
+
+          {page === 'orders' && (
+            <AdminOrdersView
+              orders={orders}
+              onUpdateStatus={(orderId, status) => {
+                setOrders((prev) =>
+                  prev.map((o) => (o.id === orderId ? { ...o, status } : o))
+                )
+                setToast(`Đã cập nhật đơn ${orderId} sang trạng thái “${status}”`)
+              }}
+            />
+          )}
+
+          {page === 'products' && (
+            <>
+              <ProductEditorial setCategory={setCategory} />
+              <Products
+                products={filtered}
+                total={items.length}
+                category={category}
+                setCategory={setCategory}
+                stock={stock}
+                setStock={setStock}
+                edit={edit}
+                detail={(p) => {
+                  setSelected(p)
+                  setModal('detail')
+                }}
+                remove={remove}
+                suggested={suggested}
+              />
+            </>
+          )}
+
+          {page === 'pricing' && (
+            <Pricing
+              products={items}
+              dynamicEnabled={settings.dynamicPricing}
+              tab={tab}
+              setTab={setTab}
+              suggested={suggested}
+              apply={setPrice}
+              season={season}
+              setSeason={(value) => updateFactors({ season: value })}
+              demand={demand}
+              setDemand={(value) => updateFactors({ demand: value })}
+              inventory={inventory}
+              setInventory={(value) => updateFactors({ inventory: value })}
+              sensitivity={sensitivity}
+              setSensitivity={(value) => updateFactors({ sensitivity: value })}
+              toast={setToast}
+            />
+          )}
+
+          {page === 'reports' && (
+            <Reports
+              period={period}
+              setPeriod={setPeriod}
+              products={items}
+              exportCsv={exportCsv}
+            />
+          )}
+
+          {page === 'settings' && (
+            <SettingsPage
+              settings={settings}
+              setSettings={updateSettings}
+              save={() => setToast('Cài đặt đã được lưu')}
+            />
+          )}
+
+          {page === 'help' && <Help faq={faq} setFaq={setFaq} toast={setToast} />}
+        </main>
+
+        <footer className="page-footer">
+          <span>© 2026 ShopMart Pricing Studio</span>
+          <span>
+            <i className="footer-pulse" /> Dữ liệu cập nhật vừa xong
+          </span>
+        </footer>
+      </div>
+
+      {modal && (
+        <ProductModal
+          mode={modal}
+          product={selected}
+          close={() => setModal(null)}
+          edit={() => setModal('edit')}
+          save={(p) => {
+            if (modal === 'edit')
+              setItems((all: Product[]) => all.map((x) => (x.id === p.id ? p : x)))
+            else setItems((all: Product[]) => [p, ...all])
+            setModal(null)
+            setToast(modal === 'edit' ? 'Đã cập nhật sản phẩm' : 'Đã thêm sản phẩm mới')
+          }}
+        />
+      )}
+
+      {toast && (
+        <div className="toast">
+          <span>
+            <Check size={15} />
+          </span>
+          {toast}
+          <button onClick={() => setToast('')} aria-label="Đóng">
+            <X size={15} />
+          </button>
+        </div>
+      )}
     </div>
-    {modal && <ProductModal mode={modal} product={selected} close={() => setModal(null)} edit={() => setModal('edit')} save={(p) => { if (modal === 'edit') setItems((all: Product[]) => all.map((x) => x.id === p.id ? p : x)); else setItems((all: Product[]) => [p, ...all]); setModal(null); setToast(modal === 'edit' ? 'Đã cập nhật sản phẩm' : 'Đã thêm sản phẩm mới') }} />}
-    {toast && <div className="toast"><span><Check size={15} /></span>{toast}<button onClick={() => setToast('')} aria-label="Đóng"><X size={15} /></button></div>}
-  </div>
+  )
 }
 
-function Heading({ title, description, action }: { eyebrow: string; title: React.ReactNode; description: string; action?: React.ReactNode }) { return <div className="page-heading"><div><h1>{title}</h1><p>{description}</p></div>{action && <div className="heading-action">{action}</div>}</div> }
-function Metric({ label, value, change, icon: Icon, tone, note, trend, trendTone = 'green', down = false }: { label: string; value: string; change: string; icon: typeof TrendingUp; tone: string; note: string; trend?: number[]; trendTone?: 'green' | 'orange' | 'red'; down?: boolean }) { return <div className="metric-card"><div className="metric-top"><span className="font-sans">{label}</span><i className={`metric-icon ${tone}`}><Icon size={18} /></i></div><div className="metric-value font-number font-bold">{value}</div><div className="metric-bottom"><b className={down ? 'negative' : ''}>{down ? <ArrowDownRight size={14} /> : <ArrowUpRight size={14} />}{change}</b><span>{note}</span></div>{trend && trend.length > 1 && <Sparkline label={label} values={trend} tone={trendTone} />}</div> }
-function Sparkline({ label, values, tone }: { label: string; values: number[]; tone: 'green' | 'orange' | 'red' }) {
-  const min = Math.min(...values), range = Math.max(...values) - min || 1
-  const points = values.map((value, index) => `${(index / (values.length - 1)) * 120},${23 - ((value - min) / range) * 17}`)
+// =========================================================================
+// ADMIN COMPONENTS
+// =========================================================================
+
+function Heading({
+  title,
+  description,
+  action,
+}: {
+  eyebrow?: string
+  title: React.ReactNode
+  description: string
+  action?: React.ReactNode
+}) {
+  return (
+    <div className="page-heading">
+      <div>
+        <h1>{title}</h1>
+        <p>{description}</p>
+      </div>
+      {action && <div className="heading-action">{action}</div>}
+    </div>
+  )
+}
+
+function Metric({
+  label,
+  value,
+  change,
+  icon: Icon,
+  tone,
+  note,
+  trend,
+  trendTone = 'green',
+  down = false,
+}: {
+  label: string
+  value: string
+  change: string
+  icon: typeof TrendingUp
+  tone: string
+  note: string
+  trend?: number[]
+  trendTone?: 'green' | 'orange' | 'red'
+  down?: boolean
+}) {
+  return (
+    <div className="metric-card">
+      <div className="metric-top">
+        <span className="font-sans">{label}</span>
+        <i className={`metric-icon ${tone}`}>
+          <Icon size={18} />
+        </i>
+      </div>
+      <div className="metric-value font-number font-bold">{value}</div>
+      <div className="metric-bottom">
+        <b className={down ? 'negative' : ''}>
+          {down ? <ArrowDownRight size={14} /> : <ArrowUpRight size={14} />}
+          {change}
+        </b>
+        <span>{note}</span>
+      </div>
+      {trend && trend.length > 1 && (
+        <Sparkline label={label} values={trend} tone={trendTone} />
+      )}
+    </div>
+  )
+}
+
+function Sparkline({
+  label,
+  values,
+  tone,
+}: {
+  label: string
+  values: number[]
+  tone: 'green' | 'orange' | 'red'
+}) {
+  const min = Math.min(...values),
+    range = Math.max(...values) - min || 1
+  const points = values.map(
+    (value, index) =>
+      `${(index / (values.length - 1)) * 120},${23 - ((value - min) / range) * 17}`
+  )
   const line = `M${points.join(' L')}`
-  return <svg className={`metric-sparkline ${tone}`} viewBox="0 0 120 30" preserveAspectRatio="none" role="img" aria-label={`${label}: xu hướng ${tone === 'red' ? 'giảm' : 'tăng'}`}><path className="spark-area" d={`${line} L120 30 L0 30 Z`} /><path className="spark-line" d={line} /></svg>
-}
-function Overview({ go }: { go: (p: Page) => void }) {
-  return <>
-    <section className="welcome-banner"><div className="welcome-copy"><h2 className="font-serif">Chào buổi sáng,<br />Thùy Anh!</h2><p className="font-sans">Hôm nay là một ngày tuyệt vời để thúc đẩy doanh số. Cùng ShopMart tối ưu cửa hàng của bạn nhé!</p><button className="button button-light font-sans" onClick={() => go('pricing')}>Khám phá gợi ý hôm nay <ArrowRight size={15} /></button></div><div className="banner-image" role="img" aria-label="Phòng khách sofa kem với tường gỗ nan xanh lá" /><div className="banner-growth-note font-script">Small Updates,<br /><em>Big Growth</em><span>✳</span></div></section>
-    <section className="metrics-grid"><Metric label="Doanh thu hôm nay" value="125.000.000₫" change="12,5%" icon={TrendingUp} tone="orange" note="so với hôm qua" trend={[12, 14, 13, 17, 16, 20, 23, 28]} trendTone="green" /><Metric label="Đơn hàng" value="1.250" change="8,3%" icon={ShoppingBag} tone="green" note="so với hôm qua" trend={[8, 10, 9, 12, 11, 15, 17, 21]} trendTone="orange" /><Metric label="Tồn kho trung bình" value="8.240" change="3,2%" icon={Package} tone="gray" note="sản phẩm còn hàng" trend={[28, 27, 24, 25, 20, 18, 14, 11]} trendTone="red" down /><Metric label="Tỷ lệ chuyển đổi" value="6,8%" change="0,4%" icon={Gauge} tone="brown" note="so với tuần trước" trend={[6, 8, 7, 9, 10, 11, 13, 16]} trendTone="green" /></section>
-    <div className="overview-grid"><section className="panel trend-panel"><div className="panel-heading"><div><h3>Xu hướng doanh thu</h3></div><button className="select-button" onClick={() => go('reports')}>7 ngày qua <ChevronDown size={14} /></button></div><div className="chart-legend"><span><i className="legend-dot revenue-dot" /> Doanh thu</span><span><i className="legend-dot price-dot" /> Giá bán TB</span><b>125,4 triệu <small>+12,5%</small></b></div><div className="chart-area"><ResponsiveContainer width="100%" height="100%"><ComposedChart data={series} margin={{ top: 12, right: 4, bottom: 0, left: -18 }}><defs><linearGradient id="fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#10b981" stopOpacity={.3} /><stop offset="100%" stopColor="#10b981" stopOpacity={0} /></linearGradient><linearGradient id="priceFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#e6a14a" stopOpacity={.19} /><stop offset="100%" stopColor="#e6a14a" stopOpacity={0} /></linearGradient></defs><CartesianGrid stroke="#ebe9e0" strokeDasharray="3 5" vertical={false} /><XAxis dataKey="d" axisLine={false} tickLine={false} tick={{ fill: '#8b9086', fontSize: 11 }} /><YAxis axisLine={false} tickLine={false} tick={{ fill: '#8b9086', fontSize: 10 }} tickFormatter={(v: number) => `${v}tr`} /><Tooltip /><Area dataKey="rev" stroke="#2d6a4f" strokeWidth={2.5} fill="url(#fill)" /><Area dataKey="price" stroke="#c58b45" strokeWidth={2} fill="url(#priceFill)" dot={{ r: 3 }} /></ComposedChart></ResponsiveContainer></div><div className="chart-footnote"><span><i className="footer-pulse" /> Cập nhật 2 phút trước</span><button className="link-button" onClick={() => go('reports')}>Phân tích chi tiết <ArrowRight size={14} /></button></div></section>
-      <section className="panel recommendations-panel"><div className="recommend-heading"><div><h3>Gợi ý cho cửa hàng</h3></div><button onClick={() => go('pricing')}>Xem tất cả <ArrowRight size={14} /></button></div><div className="recommend-card"><img src={img('photo-1555041469-a586c61ea9bc')} alt="Sofa vải" /><div><b>Tăng giá nhẹ sofa vải</b><p>Dự báo tăng doanh thu 8–12%</p></div><button className="round-arrow" onClick={() => go('pricing')} aria-label="Xem gợi ý sofa"><ArrowRight size={15} /></button></div><div className="recommend-card"><img src={img('photo-1507473885765-e6ed057f782c')} alt="Đèn bàn" /><div><b>Ưu tiên giải phóng hàng tồn</b><p>Giảm tồn kho nhanh hơn 15–20%</p></div><button className="round-arrow" onClick={() => go('products')} aria-label="Xem tồn kho"><ArrowRight size={15} /></button></div><div className="recommend-card"><img src={img('photo-1567538096630-e0c55bd6374c')} alt="Ghế thư giãn" /><div><b>Kiểm tra giá đối thủ</b><p>3 sản phẩm cần điều chỉnh</p></div><button className="round-arrow" onClick={() => go('pricing')} aria-label="Kiểm tra giá"><ArrowRight size={15} /></button></div></section></div>
-    <div className="lower-grid"><section className="panel factors-panel"><div className="panel-heading"><div><h3>Yếu tố đang ảnh hưởng đến giá</h3></div><button className="icon-button" onClick={() => go('pricing')}><ArrowRight size={17} /></button></div><div className="factor-cards">{[['Nhu cầu nội thất', 'Cao', 'Tăng 14% tuần này', 78, 'factor-green'], ['Nguồn cung gỗ', 'Đỉnh', 'Giá nhập tăng nhẹ', 62, 'factor-orange'], ['Mùa mua sắm', 'Tăng dần', 'Cận mùa lễ hội', 66, 'factor-forest']].map(([label, state, note, pct, tone]) => <div className="factor-card" key={String(label)}><div className="factor-label"><b>{label}</b><span>{state}</span></div><div className={`factor-meter ${tone}`}><i style={{ width: `${pct}%` }} /></div><small>{note}</small></div>)}</div></section><section className="partner-banner"><div className="partner-copy"><h3>Cùng bạn lớn lên,<br />từng ngày một.</h3><p>Khám phá thêm mẹo quản lý và tối ưu cửa hàng.</p><button onClick={() => go('help')}>Xem hướng dẫn <ArrowRight size={14} /></button></div><div className="partner-image" role="img" aria-label="Không gian sống xanh và sáng" /></section></div>
-  </>
+  return (
+    <svg
+      className={`metric-sparkline ${tone}`}
+      viewBox="0 0 120 30"
+      preserveAspectRatio="none"
+      role="img"
+      aria-label={`${label}: xu hướng ${tone === 'red' ? 'giảm' : 'tăng'}`}
+    >
+      <path className="spark-area" d={`${line} L120 30 L0 30 Z`} />
+      <path className="spark-line" d={line} />
+    </svg>
+  )
 }
 
-function ProductEditorial({ setCategory }: { setCategory: (category: string) => void }) {
+function Overview({
+  go,
+  totalOrdersCount = 1250,
+}: {
+  go: (p: Page) => void
+  totalOrdersCount?: number
+}) {
+  return (
+    <>
+      <section className="welcome-banner">
+        <div className="welcome-copy">
+          <h2 className="font-serif">
+            Chào buổi sáng,
+            <br />
+            Thùy Anh!
+          </h2>
+          <p className="font-sans">
+            Hôm nay là một ngày tuyệt vời để thúc đẩy doanh số. Cùng ShopMart tối ưu cửa hàng của bạn nhé!
+          </p>
+          <button
+            className="button button-light font-sans"
+            onClick={() => go('pricing')}
+          >
+            Khám phá gợi ý hôm nay <ArrowRight size={15} />
+          </button>
+        </div>
+        <div
+          className="banner-image"
+          role="img"
+          aria-label="Phòng khách sofa kem với tường gỗ nan xanh lá"
+        />
+        <div className="banner-growth-note font-script">
+          Small Updates,
+          <br />
+          <em>Big Growth</em>
+          <span>✳</span>
+        </div>
+      </section>
+
+      <section className="metrics-grid">
+        <Metric
+          label="Doanh thu hôm nay"
+          value="125.000.000₫"
+          change="12,5%"
+          icon={TrendingUp}
+          tone="orange"
+          note="so với hôm qua"
+          trend={[12, 14, 13, 17, 16, 20, 23, 28]}
+          trendTone="green"
+        />
+        <Metric
+          label="Đơn hàng hệ thống"
+          value={String(totalOrdersCount)}
+          change="8,3%"
+          icon={ShoppingBag}
+          tone="green"
+          note="đơn hàng ghi nhận"
+          trend={[8, 10, 9, 12, 11, 15, 17, 21]}
+          trendTone="orange"
+        />
+        <Metric
+          label="Tồn kho trung bình"
+          value="8.240"
+          change="3,2%"
+          icon={Package}
+          tone="gray"
+          note="sản phẩm còn hàng"
+          trend={[28, 27, 24, 25, 20, 18, 14, 11]}
+          trendTone="red"
+          down
+        />
+        <Metric
+          label="Tỷ lệ chuyển đổi"
+          value="6,8%"
+          change="0,4%"
+          icon={Gauge}
+          tone="brown"
+          note="so với tuần trước"
+          trend={[6, 8, 7, 9, 10, 11, 13, 16]}
+          trendTone="green"
+        />
+      </section>
+
+      <div className="overview-grid">
+        <section className="panel trend-panel">
+          <div className="panel-heading">
+            <div>
+              <h3>Xu hướng doanh thu</h3>
+            </div>
+            <button className="select-button" onClick={() => go('reports')}>
+              7 ngày qua <ChevronDown size={14} />
+            </button>
+          </div>
+          <div className="chart-legend">
+            <span>
+              <i className="legend-dot revenue-dot" /> Doanh thu
+            </span>
+            <span>
+              <i className="legend-dot price-dot" /> Giá bán TB
+            </span>
+            <b>
+              125,4 triệu <small>+12,5%</small>
+            </b>
+          </div>
+          <div className="chart-area">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart
+                data={series}
+                margin={{ top: 12, right: 4, bottom: 0, left: -18 }}
+              >
+                <defs>
+                  <linearGradient id="fill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#10b981" stopOpacity={0.3} />
+                    <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="priceFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#e6a14a" stopOpacity={0.19} />
+                    <stop offset="100%" stopColor="#e6a14a" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid
+                  stroke="#ebe9e0"
+                  strokeDasharray="3 5"
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="d"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: '#8b9086', fontSize: 11 }}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: '#8b9086', fontSize: 10 }}
+                  tickFormatter={(v: number) => `${v}tr`}
+                />
+                <Tooltip />
+                <Area
+                  dataKey="rev"
+                  stroke="#2d6a4f"
+                  strokeWidth={2.5}
+                  fill="url(#fill)"
+                />
+                <Area
+                  dataKey="price"
+                  stroke="#c58b45"
+                  strokeWidth={2}
+                  fill="url(#priceFill)"
+                  dot={{ r: 3 }}
+                />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="chart-footnote">
+            <span>
+              <i className="footer-pulse" /> Cập nhật 2 phút trước
+            </span>
+            <button className="link-button" onClick={() => go('reports')}>
+              Phân tích chi tiết <ArrowRight size={14} />
+            </button>
+          </div>
+        </section>
+
+        <section className="panel recommendations-panel">
+          <div className="recommend-heading">
+            <div>
+              <h3>Gợi ý cho cửa hàng</h3>
+            </div>
+            <button onClick={() => go('pricing')}>
+              Xem tất cả <ArrowRight size={14} />
+            </button>
+          </div>
+          <div className="recommend-card">
+            <img
+              src="https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=720&q=82"
+              alt="Sofa vải"
+            />
+            <div>
+              <b>Tăng giá nhẹ sofa vải</b>
+              <p>Dự báo tăng doanh thu 8–12%</p>
+            </div>
+            <button
+              className="round-arrow"
+              onClick={() => go('pricing')}
+              aria-label="Xem gợi ý sofa"
+            >
+              <ArrowRight size={15} />
+            </button>
+          </div>
+          <div className="recommend-card">
+            <img
+              src="https://images.unsplash.com/photo-1507473885765-e6ed057f782c?auto=format&fit=crop&w=720&q=82"
+              alt="Đèn bàn"
+            />
+            <div>
+              <b>Ưu tiên giải phóng hàng tồn</b>
+              <p>Giảm tồn kho nhanh hơn 15–20%</p>
+            </div>
+            <button
+              className="round-arrow"
+              onClick={() => go('products')}
+              aria-label="Xem tồn kho"
+            >
+              <ArrowRight size={15} />
+            </button>
+          </div>
+          <div className="recommend-card">
+            <img
+              src="https://images.unsplash.com/photo-1567538096630-e0c55bd6374c?auto=format&fit=crop&w=720&q=82"
+              alt="Ghế thư giãn"
+            />
+            <div>
+              <b>Kiểm tra giá đối thủ</b>
+              <p>3 sản phẩm cần điều chỉnh</p>
+            </div>
+            <button
+              className="round-arrow"
+              onClick={() => go('pricing')}
+              aria-label="Kiểm tra giá"
+            >
+              <ArrowRight size={15} />
+            </button>
+          </div>
+        </section>
+      </div>
+
+      <div className="lower-grid">
+        <section className="panel factors-panel">
+          <div className="panel-heading">
+            <div>
+              <h3>Yếu tố đang ảnh hưởng đến giá</h3>
+            </div>
+            <button className="icon-button" onClick={() => go('pricing')}>
+              <ArrowRight size={17} />
+            </button>
+          </div>
+          <div className="factor-cards">
+            {[
+              ['Nhu cầu nội thất', 'Cao', 'Tăng 14% tuần này', 78, 'factor-green'],
+              ['Nguồn cung gỗ', 'Đỉnh', 'Giá nhập tăng nhẹ', 62, 'factor-orange'],
+              ['Mùa mua sắm', 'Tăng dần', 'Cận mùa lễ hội', 66, 'factor-forest'],
+            ].map(([label, state, note, pct, tone]) => (
+              <div className="factor-card" key={String(label)}>
+                <div className="factor-label">
+                  <b>{label}</b>
+                  <span>{state}</span>
+                </div>
+                <div className={`factor-meter ${tone}`}>
+                  <i style={{ width: `${pct}%` }} />
+                </div>
+                <small>{note}</small>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="partner-banner">
+          <div className="partner-copy">
+            <h3>
+              Cùng bạn lớn lên,
+              <br />
+              từng ngày một.
+            </h3>
+            <p>Khám phá thêm mẹo quản lý và tối ưu cửa hàng.</p>
+            <button onClick={() => go('help')}>
+              Xem hướng dẫn <ArrowRight size={14} />
+            </button>
+          </div>
+          <div
+            className="partner-image"
+            role="img"
+            aria-label="Không gian sống xanh và sáng"
+          />
+        </section>
+      </div>
+    </>
+  )
+}
+
+function AdminOrdersView({
+  orders,
+  onUpdateStatus,
+}: {
+  orders: Order[]
+  onUpdateStatus: (orderId: string, status: Order['status']) => void
+}) {
+  return (
+    <>
+      <Heading
+        title="Quản lý Đơn hàng"
+        description={`Hệ thống ghi nhận ${orders.length} đơn hàng từ khách hàng trực tuyến.`}
+      />
+      <div className="table-panel">
+        <div className="table-heading">
+          <div>
+            <h3>Danh sách đơn hàng</h3>
+            <p>Đồng bộ thời gian thực từ giao diện mua hàng của khách.</p>
+          </div>
+        </div>
+        <div className="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>MÃ ĐƠN</th>
+                <th>KHÁCH HÀNG</th>
+                <th>SẢN PHẨM</th>
+                <th>TỔNG TIỀN</th>
+                <th>THANH TOÁN</th>
+                <th>THỜI GIAN</th>
+                <th>TRẠNG THÁI</th>
+                <th>THAO TÁC</th>
+              </tr>
+            </thead>
+            <tbody>
+              {orders.map((o) => (
+                <tr key={o.id}>
+                  <td>
+                    <b>{o.id}</b>
+                  </td>
+                  <td>
+                    <div>
+                      <b>{o.customerName}</b>
+                      <small style={{ display: 'block', color: '#888' }}>
+                        {o.phone}
+                      </small>
+                    </div>
+                  </td>
+                  <td>{o.items.map((i) => `${i.product.name} (x${i.quantity})`).join(', ')}</td>
+                  <td>
+                    <b style={{ color: 'var(--forest)' }}>{money(o.totalAmount)}</b>
+                  </td>
+                  <td>
+                    {o.paymentMethod === 'cod'
+                      ? 'COD'
+                      : o.paymentMethod === 'vietqr'
+                      ? 'VietQR'
+                      : 'MoMo'}
+                  </td>
+                  <td>{o.createdAt}</td>
+                  <td>
+                    <span
+                      style={{
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        background:
+                          o.status === 'Chờ xác nhận'
+                            ? '#fff2db'
+                            : o.status === 'Đang giao'
+                            ? '#e1effc'
+                            : '#e4f5e2',
+                        color:
+                          o.status === 'Chờ xác nhận'
+                            ? '#9c6c1f'
+                            : o.status === 'Đang giao'
+                            ? '#1f649c'
+                            : '#276f23',
+                      }}
+                    >
+                      {o.status}
+                    </span>
+                  </td>
+                  <td>
+                    <select
+                      value={o.status}
+                      onChange={(e) =>
+                        onUpdateStatus(o.id, e.target.value as Order['status'])
+                      }
+                      style={{
+                        border: '1px solid #dcd7ca',
+                        borderRadius: '4px',
+                        padding: '4px 6px',
+                        fontSize: '11px',
+                        background: '#fff',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <option value="Chờ xác nhận">Chờ xác nhận</option>
+                      <option value="Đang giao">Đang giao</option>
+                      <option value="Đã hoàn thành">Đã hoàn thành</option>
+                      <option value="Đã hủy">Đã hủy</option>
+                    </select>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
+  )
+}
+
+function ProductEditorial({
+  setCategory,
+}: {
+  setCategory: (category: string) => void
+}) {
   const collections = [
-    { title: 'Modern Living', copy: 'Những thiết kế tinh giản cho phòng khách.', category: 'Nội thất', image: img('photo-1600210492486-724fe5c67fb0') },
-    { title: 'Small comforts', copy: 'Chi tiết nhỏ, cảm giác ở nhà.', category: 'Gia dụng', image: img('photo-1616486338812-3dadae4b4ace') },
+    {
+      title: 'Modern Living',
+      copy: 'Những thiết kế tinh giản cho phòng khách.',
+      category: 'Nội thất',
+      image:
+        'https://images.unsplash.com/photo-1600210492486-724fe5c67fb0?auto=format&fit=crop&w=720&q=82',
+    },
+    {
+      title: 'Small comforts',
+      copy: 'Chi tiết nhỏ, cảm giác ở nhà.',
+      category: 'Gia dụng',
+      image:
+        'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=720&q=82',
+    },
   ]
   const categoryImages = [
-    img('photo-1555041469-a586c61ea9bc'), img('photo-1483985988355-763728e1935b'),
-    img('photo-1494438639946-1ebd1d20bf85'), img('photo-1497366754035-f200968a6e72'),
-    img('photo-1578500494198-246f612d3b3d'),
+    'https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=720&q=82',
+    'https://images.unsplash.com/photo-1483985988355-763728e1935b?auto=format&fit=crop&w=720&q=82',
+    'https://images.unsplash.com/photo-1494438639946-1ebd1d20bf85?auto=format&fit=crop&w=720&q=82',
+    'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=720&q=82',
+    'https://images.unsplash.com/photo-1578500494198-246f612d3b3d?auto=format&fit=crop&w=720&q=82',
   ]
-  return <section className="storefront-editorial">
-    <div className="storefront-hero">
-      <div className="storefront-hero-copy"><h2>Nhà là nơi<br />mọi thứ <em>dịu lại.</em></h2><p>Chọn những món đồ đẹp và hữu dụng, để mỗi ngày ở nhà đều đáng mong chờ.</p><button className="button storefront-cta" onClick={() => setCategory('Nội thất')}>Khám phá nội thất <ArrowRight size={15} /></button><div className="hero-pagination"><b>01</b><span /> <small>03</small></div></div>
-      <div className="storefront-hero-photo" role="img" aria-label="Phòng khách hiện đại với sofa sáng màu"></div>
-    </div>
-    <section className="shop-categories"><div className="store-section-heading"><div><h3>Một góc nhỏ cho mỗi điều bạn cần.</h3></div><button className="link-button" onClick={() => setCategory('Tất cả')}>Tất cả danh mục <ArrowRight size={14} /></button></div><div className="category-orbits">{categories.map((name, index) => <button className="category-orbit" key={name} onClick={() => setCategory(name)}><span className="category-orbit-image"><img src={categoryImages[index]} alt="" loading="lazy" /></span><b>{name}</b><small>{['Sống chậm', 'Mặc mỗi ngày', 'Đủ đầy tiện nghi', 'Gọn gàng hơn', 'Điều thú vị'][index]}</small></button>)}</div></section>
-    <div className="collection-stories">{collections.map((collection) => <button className="collection-story" key={collection.title} style={{ backgroundImage: `linear-gradient(90deg, #f1e9de 0%, #f1e9deed 38%, #f1e9de00 82%), url(${collection.image})` }} onClick={() => setCategory(collection.category)}><b>{collection.title}</b><small>{collection.copy}</small><span className="story-action">Xem bộ sưu tập <ArrowRight size={14} /></span></button>)}</div>
-  </section>
+  return (
+    <section className="storefront-editorial">
+      <div className="storefront-hero">
+        <div className="storefront-hero-copy">
+          <h2>
+            Nhà là nơi
+            <br />
+            mọi thứ <em>dịu lại.</em>
+          </h2>
+          <p>
+            Chọn những món đồ đẹp và hữu dụng, để mỗi ngày ở nhà đều đáng mong chờ.
+          </p>
+          <button
+            className="button storefront-cta"
+            onClick={() => setCategory('Nội thất')}
+          >
+            Khám phá nội thất <ArrowRight size={15} />
+          </button>
+          <div className="hero-pagination">
+            <b>01</b>
+            <span /> <small>03</small>
+          </div>
+        </div>
+        <div
+          className="storefront-hero-photo"
+          role="img"
+          aria-label="Phòng khách hiện đại với sofa sáng màu"
+        />
+      </div>
+
+      <section className="shop-categories">
+        <div className="store-section-heading">
+          <div>
+            <h3>Một góc nhỏ cho mỗi điều bạn cần.</h3>
+          </div>
+          <button className="link-button" onClick={() => setCategory('Tất cả')}>
+            Tất cả danh mục <ArrowRight size={14} />
+          </button>
+        </div>
+        <div className="category-orbits">
+          {categories.map((name, index) => (
+            <button
+              className="category-orbit"
+              key={name}
+              onClick={() => setCategory(name)}
+            >
+              <span className="category-orbit-image">
+                <img src={categoryImages[index]} alt="" loading="lazy" />
+              </span>
+              <b>{name}</b>
+              <small>
+                {
+                  ['Sống chậm', 'Mặc mỗi ngày', 'Đủ đầy tiện nghi', 'Gọn gàng hơn', 'Điều thú vị'][
+                    index
+                  ]
+                }
+              </small>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <div className="collection-stories">
+        {collections.map((collection) => (
+          <button
+            className="collection-story"
+            key={collection.title}
+            style={{
+              backgroundImage: `linear-gradient(90deg, #f1e9de 0%, #f1e9deed 38%, #f1e9de00 82%), url(${collection.image})`,
+            }}
+            onClick={() => setCategory(collection.category)}
+          >
+            <b>{collection.title}</b>
+            <small>{collection.copy}</small>
+            <span className="story-action">
+              Xem bộ sưu tập <ArrowRight size={14} />
+            </span>
+          </button>
+        ))}
+      </div>
+    </section>
+  )
 }
 
-function Products({ products, total, category, setCategory, stock, setStock, edit, detail, remove, suggested }: { products: Product[]; total: number; category: string; setCategory: (v: string) => void; stock: string; setStock: (v: string) => void; edit: (p?: Product) => void; detail: (p: Product) => void; remove: (p: Product) => void; suggested: (p: Product) => number }) {
-  return <><Heading eyebrow="DANH MỤC CỬA HÀNG" title="Sản phẩm" description={`${total} sản phẩm đang được quản lý trong cửa hàng.`} action={<button className="button button-primary" onClick={() => edit()}><Plus size={16} /> Thêm sản phẩm</button>} /><div className="catalog-toolbar"><div className="category-tabs"><button className={category === 'Tất cả' ? 'current' : ''} onClick={() => setCategory('Tất cả')}>Tất cả <span>{total}</span></button>{categories.map((c) => <button key={c} className={category === c ? 'current' : ''} onClick={() => setCategory(c)}>{c}</button>)}</div><div className="catalog-filters"><label className="filter-select"><SlidersHorizontal size={15} /><select value={stock} onChange={(e) => setStock(e.target.value)}><option>Tất cả tồn kho</option><option>Sắp hết</option><option>Còn nhiều</option></select><ChevronDown size={14} /></label><button className="button button-outline" onClick={() => { setCategory('Tất cả'); setStock('Tất cả tồn kho') }}>Đặt lại lọc</button></div></div><div className="product-summary"><span>Hiển thị <b>{products.length}</b> trên tổng số sản phẩm</span><span><i className="status-dot" /> Giá được đồng bộ</span></div>{products.length ? <div className="product-grid">{products.map((p) => <article className="product-card" key={p.id}><button className="product-photo" onClick={() => detail(p)}><img src={p.image} alt={p.name} loading="lazy" /><span className="product-category">{p.category}</span><span className="quick-view"><Search size={14} /> Xem chi tiết</span></button><div className="product-info"><div className="product-title-row"><button className="product-name" onClick={() => detail(p)}>{p.name}</button><button className="icon-button" aria-label="Chỉnh sửa" onClick={() => edit(p)}><Ellipsis size={18} /></button></div><div className="product-sku">MÃ {p.id}</div><div className="price-pair"><span>Giá hiện tại</span><b>{money(p.current)}</b></div><div className="product-bottom"><span className={`stock-label ${p.stock < 10 ? 'stock-low' : ''}`}><i />{p.stock < 10 ? `Còn ${p.stock}` : `Kho: ${p.stock}`}</span><span>Gợi ý {money(suggested(p))}</span></div><div className="product-actions"><button onClick={() => edit(p)}><Pencil size={14} /> Chỉnh sửa</button><button className="danger-action" onClick={() => remove(p)} aria-label="Xóa sản phẩm"><Trash2 size={14} /></button></div></div></article>)}</div> : <div className="empty-state"><Package size={28} /><h3>Không tìm thấy sản phẩm</h3><p>Thử đổi từ khóa tìm kiếm hoặc bộ lọc.</p><button className="button button-outline" onClick={() => { setCategory('Tất cả'); setStock('Tất cả tồn kho') }}>Xóa bộ lọc</button></div>}<div className="catalog-foot">Giá đề xuất được tính từ quy tắc định giá hiện tại.<span>{products.length} kết quả</span></div></>
+function Products({
+  products,
+  total,
+  category,
+  setCategory,
+  stock,
+  setStock,
+  edit,
+  detail,
+  remove,
+  suggested,
+}: {
+  products: Product[]
+  total: number
+  category: string
+  setCategory: (v: string) => void
+  stock: string
+  setStock: (v: string) => void
+  edit: (p?: Product) => void
+  detail: (p: Product) => void
+  remove: (p: Product) => void
+  suggested: (p: Product) => number
+}) {
+  return (
+    <>
+      <Heading
+        title="Sản phẩm"
+        description={`${total} sản phẩm đang được quản lý trong cửa hàng.`}
+        action={
+          <button className="button button-primary" onClick={() => edit()}>
+            <Plus size={16} /> Thêm sản phẩm
+          </button>
+        }
+      />
+      <div className="catalog-toolbar">
+        <div className="category-tabs">
+          <button
+            className={category === 'Tất cả' ? 'current' : ''}
+            onClick={() => setCategory('Tất cả')}
+          >
+            Tất cả <span>{total}</span>
+          </button>
+          {categories.map((c) => (
+            <button
+              key={c}
+              className={category === c ? 'current' : ''}
+              onClick={() => setCategory(c)}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+        <div className="catalog-filters">
+          <label className="filter-select">
+            <SlidersHorizontal size={15} />
+            <select value={stock} onChange={(e) => setStock(e.target.value)}>
+              <option>Tất cả tồn kho</option>
+              <option>Sắp hết</option>
+              <option>Còn nhiều</option>
+            </select>
+            <ChevronDown size={14} />
+          </label>
+          <button
+            className="button button-outline"
+            onClick={() => {
+              setCategory('Tất cả')
+              setStock('Tất cả tồn kho')
+            }}
+          >
+            Đặt lại lọc
+          </button>
+        </div>
+      </div>
+      <div className="product-summary">
+        <span>
+          Hiển thị <b>{products.length}</b> trên tổng số sản phẩm
+        </span>
+        <span>
+          <i className="status-dot" /> Giá được đồng bộ
+        </span>
+      </div>
+      {products.length ? (
+        <div className="product-grid">
+          {products.map((p) => (
+            <article className="product-card" key={p.id}>
+              <button className="product-photo" onClick={() => detail(p)}>
+                <img src={p.image} alt={p.name} loading="lazy" />
+                <span className="product-category">{p.category}</span>
+                <span className="quick-view">
+                  <Search size={14} /> Xem chi tiết
+                </span>
+              </button>
+              <div className="product-info">
+                <div className="product-title-row">
+                  <button className="product-name" onClick={() => detail(p)}>
+                    {p.name}
+                  </button>
+                  <button
+                    className="icon-button"
+                    aria-label="Chỉnh sửa"
+                    onClick={() => edit(p)}
+                  >
+                    <Ellipsis size={18} />
+                  </button>
+                </div>
+                <div className="product-sku">MÃ {p.id}</div>
+                <div className="price-pair">
+                  <span>Giá hiện tại</span>
+                  <b>{money(p.current)}</b>
+                </div>
+                <div className="product-bottom">
+                  <span className={`stock-label ${p.stock < 10 ? 'stock-low' : ''}`}>
+                    <i />
+                    {p.stock < 10 ? `Còn ${p.stock}` : `Kho: ${p.stock}`}
+                  </span>
+                  <span>Gợi ý {money(suggested(p))}</span>
+                </div>
+                <div className="product-actions">
+                  <button onClick={() => edit(p)}>
+                    <Pencil size={14} /> Chỉnh sửa
+                  </button>
+                  <button
+                    className="danger-action"
+                    onClick={() => remove(p)}
+                    aria-label="Xóa sản phẩm"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div className="empty-state">
+          <Package size={28} />
+          <h3>Không tìm thấy sản phẩm</h3>
+          <p>Thử đổi từ khóa tìm kiếm hoặc bộ lọc.</p>
+          <button
+            className="button button-outline"
+            onClick={() => {
+              setCategory('Tất cả')
+              setStock('Tất cả tồn kho')
+            }}
+          >
+            Xóa bộ lọc
+          </button>
+        </div>
+      )}
+      <div className="catalog-foot">
+        Giá đề xuất được tính từ quy tắc định giá hiện tại.
+        <span>{products.length} kết quả</span>
+      </div>
+    </>
+  )
 }
 
-const priceTabs = ['Quản lý giá', 'Quy tắc giá', 'Yếu tố mùa vụ', 'Các yếu tố kinh tế', 'Lịch sử điều chỉnh']
-function Pricing(props: { products: Product[]; dynamicEnabled: boolean; tab: string; setTab: (s: string) => void; suggested: (p: Product) => number; apply: (p: Product) => void; season: number; setSeason: (v: number) => void; demand: number; setDemand: (v: number) => void; inventory: number; setInventory: (v: number) => void; sensitivity: number; setSensitivity: (v: number) => void; toast: (s: string) => void }) {
+const priceTabs = [
+  'Quản lý giá',
+  'Quy tắc giá',
+  'Yếu tố mùa vụ',
+  'Các yếu tố kinh tế',
+  'Lịch sử điều chỉnh',
+]
+
+function Pricing(props: {
+  products: Product[]
+  dynamicEnabled: boolean
+  tab: string
+  setTab: (s: string) => void
+  suggested: (p: Product) => number
+  apply: (p: Product) => void
+  season: number
+  setSeason: (v: number) => void
+  demand: number
+  setDemand: (v: number) => void
+  inventory: number
+  setInventory: (v: number) => void
+  sensitivity: number
+  setSensitivity: (v: number) => void
+  toast: (s: string) => void
+}) {
   const { products, tab, setTab } = props
-  return <><Heading eyebrow="BỘ MÁY TỐI ƯU GIÁ" title="Định giá động" description="Điều chỉnh linh hoạt theo mùa vụ, nhu cầu và sức khỏe tồn kho." action={<span className={`live-status ${props.dynamicEnabled ? '' : 'offline-status'}`}><i className="status-dot" /> {props.dynamicEnabled ? 'Hệ thống đang hoạt động' : 'Hệ thống đang tắt'}</span>} /><div className="pricing-tabs">{priceTabs.map((t) => <button key={t} className={tab === t ? 'active' : ''} onClick={() => setTab(t)}>{t}</button>)}</div>{tab === 'Quản lý giá' && <><div className="pricing-overview"><div><h2>Mức giá đang đi đúng hướng.</h2><p>Phân tích tín hiệu bán hàng để cân bằng sức mua và lợi nhuận.</p><span className="pricing-coverage"><Check size={14} /> Đã phân tích {products.length} sản phẩm</span></div><div className="pricing-overview-stat"><span>THAY ĐỔI ĐỀ XUẤT TRUNG BÌNH</span><b>+6,8%</b><small>so với giá hiện tại</small></div><Sprout className="pricing-sprout" size={58} /></div><div className="table-panel"><div className="table-heading"><div><h3>Giá sản phẩm</h3><p>Rà soát và áp dụng từng đề xuất phù hợp.</p></div><span className="updated-at"><i className="footer-pulse" /> Đồng bộ 2 phút trước</span></div><div className="table-scroll"><table><thead><tr><th>SẢN PHẨM</th><th>GIÁ CƠ SỞ</th><th>GIÁ HIỆN TẠI</th><th>GIÁ ĐỀ XUẤT</th><th>THAY ĐỔI</th><th>LÝ DO CHÍNH</th><th /></tr></thead><tbody>{products.map((p, i) => { const next = props.suggested(p), pct = (next / p.current - 1) * 100; return <tr key={p.id}><td><div className="table-product"><img src={p.image} alt="" /><span><b>{p.name}</b><small>{p.id}</small></span></div></td><td>{money(p.base)}</td><td>{money(p.current)}</td><td><b className="suggested-price">{money(next)}</b></td><td><span className="change-pill">{pct > 0 ? '+' : ''}{pct.toFixed(1)}%</span></td><td><span className="reason-label"><i />{i % 2 ? 'Nhu cầu tăng' : 'Mùa vụ & tồn kho'}</span></td><td><button className="apply-button" disabled={!props.dynamicEnabled} onClick={() => props.apply(p)}>Áp dụng</button></td></tr> })}</tbody></table></div></div></>}{tab === 'Quy tắc giá' && <Rules {...props} />}{tab === 'Yếu tố mùa vụ' && <Seasonality {...props} />}{tab === 'Các yếu tố kinh tế' && <Economics />}{tab === 'Lịch sử điều chỉnh' && <History products={products} />}</>
+  return (
+    <>
+      <Heading
+        title="Định giá động"
+        description="Điều chỉnh linh hoạt theo mùa vụ, nhu cầu và sức khỏe tồn kho."
+        action={
+          <span
+            className={`live-status ${props.dynamicEnabled ? '' : 'offline-status'}`}
+          >
+            <i className="status-dot" />{' '}
+            {props.dynamicEnabled
+              ? 'Hệ thống đang hoạt động'
+              : 'Hệ thống đang tắt'}
+          </span>
+        }
+      />
+      <div className="pricing-tabs">
+        {priceTabs.map((t) => (
+          <button
+            key={t}
+            className={tab === t ? 'active' : ''}
+            onClick={() => setTab(t)}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+      {tab === 'Quản lý giá' && (
+        <>
+          <div className="pricing-overview">
+            <div>
+              <h2>Mức giá đang đi đúng hướng.</h2>
+              <p>Phân tích tín hiệu bán hàng để cân bằng sức mua và lợi nhuận.</p>
+              <span className="pricing-coverage">
+                <Check size={14} /> Đã phân tích {products.length} sản phẩm
+              </span>
+            </div>
+            <div className="pricing-overview-stat">
+              <span>THAY ĐỔI ĐỀ XUẤT TRUNG BÌNH</span>
+              <b>+6,8%</b>
+              <small>so với giá hiện tại</small>
+            </div>
+            <Sprout className="pricing-sprout" size={58} />
+          </div>
+          <div className="table-panel">
+            <div className="table-heading">
+              <div>
+                <h3>Giá sản phẩm</h3>
+                <p>Rà soát và áp dụng từng đề xuất phù hợp.</p>
+              </div>
+              <span className="updated-at">
+                <i className="footer-pulse" /> Đồng bộ 2 phút trước
+              </span>
+            </div>
+            <div className="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>SẢN PHẨM</th>
+                    <th>GIÁ CƠ SỞ</th>
+                    <th>GIÁ HIỆN TẠI</th>
+                    <th>GIÁ ĐỀ XUẤT</th>
+                    <th>THAY ĐỔI</th>
+                    <th>LÝ DO CHÍNH</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {products.map((p, i) => {
+                    const next = props.suggested(p),
+                      pct = (next / p.current - 1) * 100
+                    return (
+                      <tr key={p.id}>
+                        <td>
+                          <div className="table-product">
+                            <img src={p.image} alt="" />
+                            <span>
+                              <b>{p.name}</b>
+                              <small>{p.id}</small>
+                            </span>
+                          </div>
+                        </td>
+                        <td>{money(p.base)}</td>
+                        <td>{money(p.current)}</td>
+                        <td>
+                          <b className="suggested-price">{money(next)}</b>
+                        </td>
+                        <td>
+                          <span className="change-pill">
+                            {pct > 0 ? '+' : ''}
+                            {pct.toFixed(1)}%
+                          </span>
+                        </td>
+                        <td>
+                          <span className="reason-label">
+                            <i />
+                            {i % 2 ? 'Nhu cầu tăng' : 'Mùa vụ & tồn kho'}
+                          </span>
+                        </td>
+                        <td>
+                          <button
+                            className="apply-button"
+                            disabled={!props.dynamicEnabled}
+                            onClick={() => props.apply(p)}
+                          >
+                            Áp dụng
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
+      {tab === 'Quy tắc giá' && <Rules {...props} />}
+      {tab === 'Yếu tố mùa vụ' && <Seasonality {...props} />}
+      {tab === 'Các yếu tố kinh tế' && <Economics />}
+      {tab === 'Lịch sử điều chỉnh' && <History products={products} />}
+    </>
+  )
 }
 
-function Rules({ products, season, setSeason, demand, setDemand, inventory, setInventory, sensitivity, setSensitivity }: { products: Product[]; season: number; setSeason: (v: number) => void; demand: number; setDemand: (v: number) => void; inventory: number; setInventory: (v: number) => void; sensitivity: number; setSensitivity: (v: number) => void }) {
-  const sample = products[0], price = sample ? Math.max(100000, sample.base * (1 + ((season * demand * inventory) - 1) * sensitivity)) : 0
-  const fields = [{ name: 'Hệ số mùa vụ', value: season, set: setSeason, min: .8, max: 1.4, desc: 'Sức mua theo thời điểm trong năm.' }, { name: 'Hệ số nhu cầu', value: demand, set: setDemand, min: .75, max: 1.5, desc: 'Tốc độ bán và nhu cầu gần đây.' }, { name: 'Hệ số tồn kho', value: inventory, set: setInventory, min: .7, max: 1.3, desc: 'Lượng hàng còn lại trong kho.' }, { name: 'Độ nhạy giá', value: sensitivity, set: setSensitivity, min: .1, max: 1, desc: 'Mức tác động lên giá cuối.' }]
-  return <div className="rules-layout"><section className="panel rules-panel"><div className="panel-heading"><div><h3>Điều chỉnh quy tắc</h3></div><SlidersHorizontal size={18} /></div><div className="rule-formula"><span>GIÁ NỀN</span><b>Giá cơ sở × hệ số dài hạn</b><span>GIÁ ĐỀ XUẤT</span><b>Giá nền × hệ số ngắn hạn</b></div>{fields.map((f) => <label className="range-control" key={f.name}><span className="range-heading"><b>{f.name}</b><output>{f.value.toFixed(2)}×</output></span><input type="range" min={f.min} max={f.max} step=".01" value={f.value} onChange={(e) => f.set(Number(e.target.value))} /><small>{f.desc}</small></label>)}</section><section className="panel live-preview"><h3>Giá đề xuất mới</h3>{sample && <div className="preview-product"><img src={sample.image} alt="" /><span><b>{sample.name}</b><small>Giá cơ sở {money(sample.base)}</small></span></div>}<div className="preview-price">{money(price)}</div><div className="preview-change"><ArrowUpRight size={15} /> {sample ? `${(price / sample.current * 100 - 100).toFixed(1)}%` : '0%'} so với giá hiện tại</div><div className="preview-breakdown">Tính toán cập nhật tức thời <i className="footer-pulse" /></div></section></div>
+function Rules({
+  products,
+  season,
+  setSeason,
+  demand,
+  setDemand,
+  inventory,
+  setInventory,
+  sensitivity,
+  setSensitivity,
+}: {
+  products: Product[]
+  season: number
+  setSeason: (v: number) => void
+  demand: number
+  setDemand: (v: number) => void
+  inventory: number
+  setInventory: (v: number) => void
+  sensitivity: number
+  setSensitivity: (v: number) => void
+}) {
+  const sample = products[0],
+    price = sample
+      ? Math.max(100000, sample.base * (1 + (season * demand * inventory - 1) * sensitivity))
+      : 0
+  const fields = [
+    {
+      name: 'Hệ số mùa vụ',
+      value: season,
+      set: setSeason,
+      min: 0.8,
+      max: 1.4,
+      desc: 'Sức mua theo thời điểm trong năm.',
+    },
+    {
+      name: 'Hệ số nhu cầu',
+      value: demand,
+      set: setDemand,
+      min: 0.75,
+      max: 1.5,
+      desc: 'Tốc độ bán và nhu cầu gần đây.',
+    },
+    {
+      name: 'Hệ số tồn kho',
+      value: inventory,
+      set: setInventory,
+      min: 0.7,
+      max: 1.3,
+      desc: 'Lượng hàng còn lại trong kho.',
+    },
+    {
+      name: 'Độ nhạy giá',
+      value: sensitivity,
+      set: setSensitivity,
+      min: 0.1,
+      max: 1,
+      desc: 'Mức tác động lên giá cuối.',
+    },
+  ]
+  return (
+    <div className="rules-layout">
+      <section className="panel rules-panel">
+        <div className="panel-heading">
+          <div>
+            <h3>Điều chỉnh quy tắc</h3>
+          </div>
+          <SlidersHorizontal size={18} />
+        </div>
+        <div className="rule-formula">
+          <span>GIÁ NỀN</span>
+          <b>Giá cơ sở × hệ số dài hạn</b>
+          <span>GIÁ ĐỀ XUẤT</span>
+          <b>Giá nền × hệ số ngắn hạn</b>
+        </div>
+        {fields.map((f) => (
+          <label className="range-control" key={f.name}>
+            <span className="range-heading">
+              <b>{f.name}</b>
+              <output>{f.value.toFixed(2)}×</output>
+            </span>
+            <input
+              type="range"
+              min={f.min}
+              max={f.max}
+              step=".01"
+              value={f.value}
+              onChange={(e) => f.set(Number(e.target.value))}
+            />
+            <small>{f.desc}</small>
+          </label>
+        ))}
+      </section>
+      <section className="panel live-preview">
+        <h3>Giá đề xuất mới</h3>
+        {sample && (
+          <div className="preview-product">
+            <img src={sample.image} alt="" />
+            <span>
+              <b>{sample.name}</b>
+              <small>Giá cơ sở {money(sample.base)}</small>
+            </span>
+          </div>
+        )}
+        <div className="preview-price">{money(price)}</div>
+        <div className="preview-change">
+          <ArrowUpRight size={15} />{' '}
+          {sample ? `${((price / sample.current) * 100 - 100).toFixed(1)}%` : '0%'} so với giá hiện tại
+        </div>
+        <div className="preview-breakdown">
+          Tính toán cập nhật tức thời <i className="footer-pulse" />
+        </div>
+      </section>
+    </div>
+  )
 }
-function Seasonality({ season, setSeason, toast }: { season: number; setSeason: (v: number) => void; toast: (s: string) => void }) {
-  return <div className="season-layout"><section className="panel season-chart-panel"><div className="panel-heading"><div><h3>Nhịp mua sắm trong năm</h3></div><span className="season-index"><b>{season.toFixed(2)}×</b><small>Hệ số hiện tại</small></span></div><p className="panel-description">Nhu cầu thường tăng vào dịp tân gia, mùa tựu trường và cuối năm.</p><div className="season-chart"><ResponsiveContainer width="100%" height="100%"><AreaChart data={months}><defs><linearGradient id="season" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#bdcdb2" stopOpacity={.7} /><stop offset="100%" stopColor="#bdcdb2" stopOpacity={0} /></linearGradient></defs><CartesianGrid stroke="#ebe9e0" strokeDasharray="3 5" vertical={false} /><XAxis dataKey="d" axisLine={false} tickLine={false} /><YAxis domain={[.8, 1.3]} tickFormatter={(v: number) => `${v.toFixed(1)}×`} /><Tooltip /><Area dataKey="v" stroke="#648364" fill="url(#season)" strokeWidth={2.5} /></AreaChart></ResponsiveContainer></div><div className="season-events"><span>● Tựu trường <small>Tháng 8</small></span><span>● 11.11 <small>Tháng 11</small></span><span>● Mùa lễ hội <small>Tháng 12</small></span></div></section><section className="panel season-control"><h3>Hệ số mùa vụ</h3><p>Điều chỉnh mức tác động cho giai đoạn hiện tại.</p><div className="season-input"><button onClick={() => setSeason(Math.max(.8, +(season - .01).toFixed(2)))}>−</button><b>{season.toFixed(2)}×</b><button onClick={() => setSeason(Math.min(1.4, +(season + .01).toFixed(2)))}>+</button></div><input type="range" min=".8" max="1.4" step=".01" value={season} onChange={(e) => setSeason(+e.target.value)} /><div className="range-ends"><span>0,80× Thấp</span><span>Cao 1,40×</span></div><div className="upcoming-event"><span className="event-calendar">11<small>THG</small></span><span><b>Mùa mua sắm cuối năm</b><small>Bắt đầu sau 12 ngày</small></span><span className="event-tag">Sắp tới</span></div><button className="button button-primary full-width" onClick={() => toast('Hệ số mùa vụ đã được lưu')}>Lưu hệ số <Check size={15} /></button></section></div>
-}
-function Economics() { const rows = [['Giá nhập khẩu & tỷ giá', 'Trung bình', 'USD/VND +0,8%', 'Rà soát giá vốn nhóm hàng nhập khẩu'], ['Lạm phát', 'Thấp', 'CPI +0,3%', 'Theo dõi chi phí vận hành hàng tháng'], ['Nhu cầu thị trường', 'Cao', 'Tăng 14% tuần này', 'Ưu tiên nhóm nội thất phòng khách'], ['Mức độ cạnh tranh', 'Trung bình', 'Ổn định', 'Giữ biên độ giá trong ngưỡng hiện tại']]; return <><div className="economy-intro"><Activity size={20} /><div><b>Bối cảnh thị trường ổn định</b><p>Các chỉ số kinh tế mô phỏng, cập nhật 18/11/2025.</p></div></div><div className="table-panel"><div className="table-heading"><div><h3>Tác động đến chiến lược giá</h3><p>Yếu tố kinh tế và hướng xử lý được đề xuất.</p></div></div><div className="table-scroll"><table><thead><tr><th>YẾU TỐ</th><th>MỨC ẢNH HƯỞNG</th><th>TÍN HIỆU</th><th>CÁCH XỬ LÝ</th></tr></thead><tbody>{rows.map((r) => <tr key={r[0]}>{r.map((v, i) => <td key={i}>{i === 1 ? <span className="impact-badge">{v}</span> : v}</td>)}</tr>)}</tbody></table></div></div><p className="economy-note"><Leaf size={17} /> Kết hợp tín hiệu thị trường với biên lợi nhuận và mục tiêu kinh doanh của cửa hàng.</p></> }
-function History({ products }: { products: Product[] }) { return <div className="table-panel"><div className="table-heading"><div><h3>Lịch sử điều chỉnh giá</h3><p>Ghi nhận thay đổi giá gần đây trong cửa hàng.</p></div><button className="select-button">30 ngày qua <ChevronDown size={14} /></button></div><div className="table-scroll"><table><thead><tr><th>SẢN PHẨM</th><th>GIÁ CŨ</th><th>GIÁ MỚI</th><th>THAY ĐỔI</th><th>THỜI GIAN</th><th>NGUYÊN NHÂN</th><th>NGƯỜI THỰC HIỆN</th></tr></thead><tbody>{products.slice(0, 8).map((p, i) => { const old = p.current * (i % 2 ? .96 : .93); return <tr key={p.id}><td><div className="table-product"><img src={p.image} alt="" /><span><b>{p.name}</b><small>{p.id}</small></span></div></td><td>{money(old)}</td><td><b>{money(p.current)}</b></td><td><span className="change-pill">+{(p.current / old * 100 - 100).toFixed(1)}%</span></td><td>18/11/2025 · 09:12</td><td>{i % 2 ? 'Nhu cầu thị trường' : 'Điều chỉnh theo mùa vụ'}</td><td>Thùy Anh</td></tr> })}</tbody></table></div></div> }
 
-function Reports({ period, setPeriod, products, exportCsv }: { period: string; setPeriod: (v: string) => void; products: Product[]; exportCsv: () => void }) {
-  const data = categories.map((name, i) => ({ name, value: [46, 22, 16, 10, 6][i] })), colors = ['#286747', '#87a083', '#c4b38b', '#a8b8a0', '#ded8c9']
-  return <><Heading eyebrow="PHÂN TÍCH KINH DOANH" title="Báo cáo" description="Đọc hiệu quả vận hành và tác động của chiến lược giá." action={<div className="report-actions"><label className="select-button"><select value={period} onChange={(e) => setPeriod(e.target.value)}><option>7 ngày qua</option><option>Tháng này</option><option>Quý này</option><option>Năm nay</option></select><ChevronDown size={14} /></label><button className="button button-primary" onClick={exportCsv}><Download size={15} /> Xuất Excel</button><button className="button button-outline" onClick={() => window.print()}>PDF</button></div>} /><div className="metrics-grid report-metrics"><Metric label="Tổng doanh thu" value="842.500.000₫" change="12,5%" icon={TrendingUp} tone="sage" note="so với kỳ trước" /><Metric label="Lợi nhuận gộp" value="268.400.000₫" change="15,2%" icon={Activity} tone="peach" note="biên lợi nhuận 31,8%" /><Metric label="Đơn hàng" value="8.420" change="8,3%" icon={ShoppingBag} tone="lilac" note="trong kỳ đã chọn" /><Metric label="Giá bán trung bình" value="1.245.000₫" change="4,6%" icon={Tag} tone="yellow" note="so với kỳ trước" /></div><div className="reports-chart-grid"><section className="panel report-revenue"><div className="panel-heading"><div><h3>Doanh thu & lợi nhuận</h3></div><span>{period}</span></div><div className="chart-legend"><span><i className="legend-dot revenue-dot" /> Doanh thu</span><span><i className="legend-dot price-dot" /> Lợi nhuận</span></div><div className="report-chart"><ResponsiveContainer width="100%" height="100%"><BarChart data={series}><CartesianGrid stroke="#ebe9e0" strokeDasharray="3 5" vertical={false} /><XAxis dataKey="d" /><YAxis tickFormatter={(v: number) => `${v}tr`} /><Tooltip /><Bar dataKey="rev" fill="#286747" radius={[4, 4, 0, 0]} /><Bar dataKey="price" fill="#d5b77e" radius={[4, 4, 0, 0]} /></BarChart></ResponsiveContainer></div></section><section className="panel category-report"><div className="panel-heading"><div><h3>Theo danh mục</h3></div></div><div className="donut-wrap"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={data} dataKey="value" nameKey="name" innerRadius="65%" outerRadius="90%" paddingAngle={3} stroke="none">{data.map((d, i) => <Cell key={d.name} fill={colors[i]} />)}</Pie><Tooltip /></PieChart></ResponsiveContainer><div className="donut-center"><b>842,5</b><small>triệu đồng</small></div></div><div className="category-legend">{data.slice(0, 4).map((d, i) => <div key={d.name}><span><i style={{ background: colors[i] }} />{d.name}</span><b>{d.value}%</b></div>)}</div></section></div><div className="reports-lower"><section className="panel strategy-panel"><div className="panel-heading"><div><h3>Trước và sau khi áp dụng</h3></div><span className="lift-pill">↗ +12,8%</span></div>{[['Doanh thu', 61, 78, '+12,8%'], ['Biên lợi nhuận', 48, 63, '+8,4%'], ['Tỷ lệ chuyển đổi', 56, 68, '+6,1%']].map(([label, a, b, v]) => <div className="compare-row" key={String(label)}><span>{label}</span><div className="compare-bars"><i style={{ width: `${a}%` }} /><b style={{ width: `${b}%` }} /></div><strong>{v}</strong></div>)}</section><section className="panel price-report"><div className="panel-heading"><div><h3>Biến động giá bán</h3></div><span className="trend-chip">↗ 4,6%</span></div><div className="mini-line-chart"><ResponsiveContainer width="100%" height="100%"><AreaChart data={series}><CartesianGrid stroke="#ebe9e0" strokeDasharray="3 5" vertical={false} /><XAxis dataKey="d" /><YAxis hide /><Tooltip /><Area dataKey="price" stroke="#b08a51" fill="#e9dcc0" /></AreaChart></ResponsiveContainer></div><div className="price-report-foot"><span>Giá bán trung bình</span><b>1.245.000₫</b></div></section></div><div className="report-note"><Sparkles size={17} /><span><b>Hiệu quả chiến lược giá tích cực</b><small>Doanh thu tăng 12,8% sau khi áp dụng định giá động.</small></span><span>{products.length} sản phẩm đang theo dõi</span></div></>
+function Seasonality({
+  season,
+  setSeason,
+  toast,
+}: {
+  season: number
+  setSeason: (v: number) => void
+  toast: (s: string) => void
+}) {
+  return (
+    <div className="season-layout">
+      <section className="panel season-chart-panel">
+        <div className="panel-heading">
+          <div>
+            <h3>Nhịp mua sắm trong năm</h3>
+          </div>
+          <span className="season-index">
+            <b>{season.toFixed(2)}×</b>
+            <small>Hệ số hiện tại</small>
+          </span>
+        </div>
+        <p className="panel-description">
+          Nhu cầu thường tăng vào dịp tân gia, mùa tựu trường và cuối năm.
+        </p>
+        <div className="season-chart">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={months}>
+              <defs>
+                <linearGradient id="season" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#bdcdb2" stopOpacity={0.7} />
+                  <stop offset="100%" stopColor="#bdcdb2" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid stroke="#ebe9e0" strokeDasharray="3 5" vertical={false} />
+              <XAxis dataKey="d" axisLine={false} tickLine={false} />
+              <YAxis domain={[0.8, 1.3]} tickFormatter={(v: number) => `${v.toFixed(1)}×`} />
+              <Tooltip />
+              <Area
+                dataKey="v"
+                stroke="#648364"
+                fill="url(#season)"
+                strokeWidth={2.5}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="season-events">
+          <span>
+            ● Tựu trường <small>Tháng 8</small>
+          </span>
+          <span>
+            ● 11.11 <small>Tháng 11</small>
+          </span>
+          <span>
+            ● Mùa lễ hội <small>Tháng 12</small>
+          </span>
+        </div>
+      </section>
+      <section className="panel season-control">
+        <h3>Hệ số mùa vụ</h3>
+        <p>Điều chỉnh mức tác động cho giai đoạn hiện tại.</p>
+        <div className="season-input">
+          <button onClick={() => setSeason(Math.max(0.8, +(season - 0.01).toFixed(2)))}>
+            −
+          </button>
+          <b>{season.toFixed(2)}×</b>
+          <button onClick={() => setSeason(Math.min(1.4, +(season + 0.01).toFixed(2)))}>
+            +
+          </button>
+        </div>
+        <input
+          type="range"
+          min="0.8"
+          max="1.4"
+          step="0.01"
+          value={season}
+          onChange={(e) => setSeason(+e.target.value)}
+        />
+        <div className="range-ends">
+          <span>0,80× Thấp</span>
+          <span>Cao 1,40×</span>
+        </div>
+        <div className="upcoming-event">
+          <span className="event-calendar">
+            11<small>THG</small>
+          </span>
+          <span>
+            <b>Mùa mua sắm cuối năm</b>
+            <small>Bắt đầu sau 12 ngày</small>
+          </span>
+          <span className="event-tag">Sắp tới</span>
+        </div>
+        <button
+          className="button button-primary full-width"
+          onClick={() => toast('Hệ số mùa vụ đã được lưu')}
+        >
+          Lưu hệ số <Check size={15} />
+        </button>
+      </section>
+    </div>
+  )
 }
 
-function SettingsPage({ settings, setSettings, save }: { settings: SettingsData; setSettings: (s: SettingsData) => void; save: () => void }) {
-  const update = <K extends keyof SettingsData>(key: K, value: SettingsData[K]) => setSettings({ ...settings, [key]: value })
-  const toggle = (key: 'dynamicPricing' | 'autoUpdate' | 'emailAlerts' | 'lowStockAlerts', label: string, desc: string) => <div className="toggle-row"><span><b>{label}</b><small>{desc}</small></span><button role="switch" aria-checked={settings[key]} className={`toggle ${settings[key] ? 'on' : ''}`} onClick={() => update(key, !settings[key])}><i /></button></div>
-  return <><Heading eyebrow="THIẾT LẬP HỆ THỐNG" title="Cài đặt" description="Quản lý cửa hàng, thông báo và cách hệ thống tự vận hành." action={<button className="button button-primary" onClick={save}><Check size={16} /> Lưu thay đổi</button>} /><div className="settings-layout"><div className="settings-main"><section className="panel settings-panel"><div className="settings-section-heading"><span className="settings-icon"><House size={18} /></span><div><h3>Thông tin cửa hàng</h3><p>Thông tin hiển thị trong không gian quản trị.</p></div></div><div className="settings-fields"><label>Tên cửa hàng<input value={settings.storeName} onChange={(e) => update('storeName', e.target.value)} /></label><label>Email hỗ trợ<input type="email" value={settings.email} onChange={(e) => update('email', e.target.value)} /></label><label>Số điện thoại<input value={settings.phone} onChange={(e) => update('phone', e.target.value)} /></label><label>Múi giờ<select defaultValue="hcm"><option value="hcm">(GMT+07:00) Hồ Chí Minh</option><option>(GMT+00:00) UTC</option></select></label></div></section><section className="panel settings-panel"><div className="settings-section-heading"><span className="settings-icon"><Gauge size={18} /></span><div><h3>Định giá động</h3><p>Kiểm soát tự động hóa và biên độ thay đổi giá.</p></div></div>{toggle('dynamicPricing', 'Kích hoạt hệ thống định giá', 'Tạo đề xuất giá theo dữ liệu cửa hàng')}{toggle('autoUpdate', 'Tự động cập nhật giá', 'Áp dụng đề xuất khi đáp ứng quy tắc')}<div className="settings-fields"><label>Giá sàn tối thiểu<input type="number" value={settings.minPrice} onChange={(e) => update('minPrice', +e.target.value)} /></label><label>Mức tăng giá tối đa (%)<input type="number" value={settings.maxIncrease} onChange={(e) => update('maxIncrease', +e.target.value)} /></label></div></section><section className="panel settings-panel"><div className="settings-section-heading"><span className="settings-icon"><Bell size={18} /></span><div><h3>Thông báo</h3><p>Chọn các cập nhật bạn muốn nhận.</p></div></div>{toggle('emailAlerts', 'Thông báo qua email', 'Nhận báo cáo định kỳ và thay đổi quan trọng')}{toggle('lowStockAlerts', 'Cảnh báo tồn kho thấp', 'Thông báo khi sản phẩm còn dưới 10 đơn vị')}</section></div><aside className="settings-aside"><div className="settings-profile"><span className="profile-avatar large-avatar">TA</span><b>Thùy Anh</b><small>Quản trị viên cửa hàng</small><span className="role-badge"><ShieldCheck size={13} /> Toàn quyền quản trị</span></div><section className="panel access-panel"><h3>Thành viên cửa hàng</h3><div className="team-row"><span className="mini-avatar">TA</span><span><b>Thùy Anh</b><small>Quản trị viên</small></span><span>Chủ cửa hàng</span></div><button className="button button-outline full-width" onClick={() => alert('Tính năng mời thành viên khả dụng khi kết nối tài khoản cửa hàng.')}>+ Mời thành viên</button></section><div className="settings-tip"><Leaf size={17} /><span><b>Mẹo nhỏ</b><small>Cấu hình được tự lưu trên thiết bị này.</small></span></div></aside></div><div className="settings-mobile-save"><button className="button button-primary" onClick={save}><Check size={16} /> Lưu thay đổi</button></div></>
-}
-function Help({ faq, setFaq, toast }: { faq: number; setFaq: (n: number) => void; toast: (s: string) => void }) {
-  const topics = [['Làm quen với định giá động', 'ShopMart phân tích giá cơ sở, mùa vụ, nhu cầu và tồn kho để đề xuất giá. Bạn có thể xem lý do trong tab Quản lý giá.'], ['Thiết lập quy tắc giá', 'Mở Định giá động → Quy tắc giá. Điều chỉnh hệ số và xem giá mẫu thay đổi ngay trước khi áp dụng.'], ['Quản lý sản phẩm', 'Mở Sản phẩm để tìm kiếm, lọc danh mục, xem tồn kho và giá. Dùng Thêm sản phẩm để tạo sản phẩm mới.'], ['Xuất báo cáo cửa hàng', 'Trong Báo cáo, chọn khoảng thời gian rồi xuất dữ liệu CSV tương thích Excel hoặc mở hộp thoại in để lưu PDF.']]
-  return <><Heading eyebrow="TRUNG TÂM HỖ TRỢ" title="Trợ giúp" description="Tìm câu trả lời nhanh hoặc kết nối với đội ngũ ShopMart." action={<button className="button button-outline" onClick={() => toast('Đã gửi yêu cầu hỗ trợ')}><CircleHelp size={16} /> Liên hệ hỗ trợ</button>} /><div className="help-layout"><section className="panel help-topics"><h3>Bắt đầu từ điều bạn cần</h3>{topics.map(([q, a], i) => <div className={`faq-item ${faq === i ? 'open' : ''}`} key={q}><button onClick={() => setFaq(faq === i ? -1 : i)}><span>0{i + 1}</span><b>{q}</b>{faq === i ? <X size={15} /> : <Plus size={15} />}</button>{faq === i && <p>{a}</p>}</div>)}</section><aside className="help-aside"><div className="support-visual"><span className="support-head" /><span className="support-body" /><span className="support-headset" /></div><section className="panel contact-panel"><h3>Chúng tôi luôn ở đây.</h3><p>Đội ngũ hỗ trợ sẵn sàng giúp bạn.</p><div className="contact-detail"><span>Hotline</span><b>1800 1234</b></div><div className="contact-detail"><span>Email</span><b>support@shopmart.vn</b></div><button className="button button-primary full-width" onClick={() => toast('Đã mở yêu cầu hỗ trợ mới')}>Gửi yêu cầu <ArrowRight size={15} /></button><small className="support-hours">Thứ 2 – Thứ 6 · 08:00 – 18:00</small></section></aside></div></>
+function Economics() {
+  const rows = [
+    ['Giá nhập khẩu & tỷ giá', 'Trung bình', 'USD/VND +0,8%', 'Rà soát giá vốn nhóm hàng nhập khẩu'],
+    ['Lạm phát', 'Thấp', 'CPI +0,3%', 'Theo dõi chi phí vận hành hàng tháng'],
+    ['Nhu cầu thị trường', 'Cao', 'Tăng 14% tuần này', 'Ưu tiên nhóm nội thất phòng khách'],
+    ['Mức độ cạnh tranh', 'Trung bình', 'Ổn định', 'Giữ biên độ giá trong ngưỡng hiện tại'],
+  ]
+  return (
+    <>
+      <div className="economy-intro">
+        <Activity size={20} />
+        <div>
+          <b>Bối cảnh thị trường ổn định</b>
+          <p>Các chỉ số kinh tế mô phỏng, cập nhật 2026.</p>
+        </div>
+      </div>
+      <div className="table-panel">
+        <div className="table-heading">
+          <div>
+            <h3>Tác động đến chiến lược giá</h3>
+            <p>Yếu tố kinh tế và hướng xử lý được đề xuất.</p>
+          </div>
+        </div>
+        <div className="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>YẾU TỐ</th>
+                <th>MỨC ẢNH HƯỞNG</th>
+                <th>TÍN HIỆU</th>
+                <th>CÁCH XỬ LÝ</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r[0]}>
+                  {r.map((v, i) => (
+                    <td key={i}>{i === 1 ? <span className="impact-badge">{v}</span> : v}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <p className="economy-note">
+        <Leaf size={17} /> Kết hợp tín hiệu thị trường với biên lợi nhuận và mục tiêu kinh doanh của cửa hàng.
+      </p>
+    </>
+  )
 }
 
-function ProductModal({ mode, product, close, edit, save }: { mode: 'add' | 'edit' | 'detail'; product: Product | null; close: () => void; edit: () => void; save: (p: Product) => void }) {
-  const [name, setName] = useState(product?.name ?? ''), [id, setId] = useState(product?.id ?? ''), [cat, setCat] = useState<Category>(product?.category ?? 'Nội thất')
-  const [base, setBase] = useState(product?.base ?? 1000000), [current, setCurrent] = useState(product?.current ?? 1000000), [stock, setStock] = useState(product?.stock ?? 10), [imageUrl, setImageUrl] = useState(product?.image ?? img('photo-1494438639946-1ebd1d20bf85')), [status, setStatus] = useState<Product['status']>(product?.status ?? 'Đang bán')
-  const submit = (e: React.FormEvent) => { e.preventDefault(); save({ id: id.trim() || `SM-${Date.now().toString().slice(-6)}`, name, category: cat, image: imageUrl, base, current, stock, status }) }
-  return <div className="modal-backdrop" onClick={(e) => { if (e.target === e.currentTarget) close() }}><section className="product-modal" role="dialog" aria-modal="true"><div className="modal-heading"><div><h2>{mode === 'detail' ? product?.name : mode === 'edit' ? 'Chỉnh sửa sản phẩm' : 'Sản phẩm mới'}</h2></div><button className="icon-button" onClick={close}><X size={18} /></button></div>{mode === 'detail' && product ? <><img className="detail-photo" src={product.image} alt={product.name} /><div className="detail-meta"><span>{product.category}</span><span>{product.id}</span><span>{product.stock} sản phẩm trong kho</span></div><div className="detail-prices"><div><small>Giá cơ sở</small><b>{money(product.base)}</b></div><div><small>Giá hiện tại</small><b>{money(product.current)}</b></div></div><button className="button button-primary full-width" onClick={edit}><Pencil size={15} /> Chỉnh sửa sản phẩm</button></> : <form onSubmit={submit}><div className="form-grid"><label>Tên sản phẩm<input required value={name} onChange={(e) => setName(e.target.value)} /></label><label>Mã sản phẩm<input value={id} onChange={(e) => setId(e.target.value)} /></label><label>Danh mục<select value={cat} onChange={(e) => setCat(e.target.value as Category)}>{categories.map((c) => <option key={c}>{c}</option>)}</select></label><label>Trạng thái<select value={status} onChange={(e) => setStatus(e.target.value as Product['status'])}><option>Đang bán</option><option>Tạm ẩn</option></select></label><label>Giá cơ sở (₫)<input type="number" min="0" value={base} onChange={(e) => setBase(+e.target.value)} /></label><label>Giá hiện tại (₫)<input type="number" min="0" value={current} onChange={(e) => setCurrent(+e.target.value)} /></label><label>Số lượng tồn kho<input type="number" min="0" value={stock} onChange={(e) => setStock(+e.target.value)} /></label><label className="form-wide">URL hình ảnh<input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} /></label></div><div className="modal-actions"><button type="button" className="button button-outline" onClick={close}>Hủy</button><button className="button button-primary"><Check size={15} />{mode === 'edit' ? 'Lưu thay đổi' : 'Thêm sản phẩm'}</button></div></form>}</section></div>
+function History({ products }: { products: Product[] }) {
+  return (
+    <div className="table-panel">
+      <div className="table-heading">
+        <div>
+          <h3>Lịch sử điều chỉnh giá</h3>
+          <p>Ghi nhận thay đổi giá gần đây trong cửa hàng.</p>
+        </div>
+        <button className="select-button">
+          30 ngày qua <ChevronDown size={14} />
+        </button>
+      </div>
+      <div className="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>SẢN PHẨM</th>
+              <th>GIÁ CŨ</th>
+              <th>GIÁ MỚI</th>
+              <th>THAY ĐỔI</th>
+              <th>THỜI GIAN</th>
+              <th>NGUYÊN NHÂN</th>
+              <th>NGƯỜI THỰC HIỆN</th>
+            </tr>
+          </thead>
+          <tbody>
+            {products.slice(0, 8).map((p, i) => {
+              const old = p.current * (i % 2 ? 0.96 : 0.93)
+              return (
+                <tr key={p.id}>
+                  <td>
+                    <div className="table-product">
+                      <img src={p.image} alt="" />
+                      <span>
+                        <b>{p.name}</b>
+                        <small>{p.id}</small>
+                      </span>
+                    </div>
+                  </td>
+                  <td>{money(old)}</td>
+                  <td>
+                    <b>{money(p.current)}</b>
+                  </td>
+                  <td>
+                    <span className="change-pill">
+                      +{((p.current / old) * 100 - 100).toFixed(1)}%
+                    </span>
+                  </td>
+                  <td>18/11/2025 · 09:12</td>
+                  <td>{i % 2 ? 'Nhu cầu thị trường' : 'Điều chỉnh theo mùa vụ'}</td>
+                  <td>Thùy Anh</td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
 }
+
+function Reports({
+  period,
+  setPeriod,
+  products,
+  exportCsv,
+}: {
+  period: string
+  setPeriod: (v: string) => void
+  products: Product[]
+  exportCsv: () => void
+}) {
+  const data = categories.map((name, i) => ({ name, value: [46, 22, 16, 10, 6][i] })),
+    colors = ['#286747', '#87a083', '#c4b38b', '#a8b8a0', '#ded8c9']
+  return (
+    <>
+      <Heading
+        title="Báo cáo"
+        description="Đọc hiệu quả vận hành và tác động của chiến lược giá."
+        action={
+          <div className="report-actions">
+            <label className="select-button">
+              <select value={period} onChange={(e) => setPeriod(e.target.value)}>
+                <option>7 ngày qua</option>
+                <option>Tháng này</option>
+                <option>Quý này</option>
+                <option>Năm nay</option>
+              </select>
+              <ChevronDown size={14} />
+            </label>
+            <button className="button button-primary" onClick={exportCsv}>
+              <Download size={15} /> Xuất Excel
+            </button>
+            <button className="button button-outline" onClick={() => window.print()}>
+              PDF
+            </button>
+          </div>
+        }
+      />
+      <div className="metrics-grid report-metrics">
+        <Metric
+          label="Tổng doanh thu"
+          value="842.500.000₫"
+          change="12,5%"
+          icon={TrendingUp}
+          tone="sage"
+          note="so với kỳ trước"
+        />
+        <Metric
+          label="Lợi nhuận gộp"
+          value="268.400.000₫"
+          change="15,2%"
+          icon={Activity}
+          tone="peach"
+          note="biên lợi nhuận 31,8%"
+        />
+        <Metric
+          label="Đơn hàng"
+          value="8.420"
+          change="8,3%"
+          icon={ShoppingBag}
+          tone="lilac"
+          note="trong kỳ đã chọn"
+        />
+        <Metric
+          label="Giá bán trung bình"
+          value="1.245.000₫"
+          change="4,6%"
+          icon={Tag}
+          tone="yellow"
+          note="so với kỳ trước"
+        />
+      </div>
+      <div className="reports-chart-grid">
+        <section className="panel report-revenue">
+          <div className="panel-heading">
+            <div>
+              <h3>Doanh thu & lợi nhuận</h3>
+            </div>
+            <span>{period}</span>
+          </div>
+          <div className="chart-legend">
+            <span>
+              <i className="legend-dot revenue-dot" /> Doanh thu
+            </span>
+            <span>
+              <i className="legend-dot price-dot" /> Lợi nhuận
+            </span>
+          </div>
+          <div className="report-chart">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={series}>
+                <CartesianGrid stroke="#ebe9e0" strokeDasharray="3 5" vertical={false} />
+                <XAxis dataKey="d" />
+                <YAxis tickFormatter={(v: number) => `${v}tr`} />
+                <Tooltip />
+                <Bar dataKey="rev" fill="#286747" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="price" fill="#d5b77e" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
+        <section className="panel category-report">
+          <div className="panel-heading">
+            <div>
+              <h3>Theo danh mục</h3>
+            </div>
+          </div>
+          <div className="donut-wrap">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={data}
+                  dataKey="value"
+                  nameKey="name"
+                  innerRadius="65%"
+                  outerRadius="90%"
+                  paddingAngle={3}
+                  stroke="none"
+                >
+                  {data.map((d, i) => (
+                    <Cell key={d.name} fill={colors[i]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="donut-center">
+              <b>842,5</b>
+              <small>triệu đồng</small>
+            </div>
+          </div>
+          <div className="category-legend">
+            {data.slice(0, 4).map((d, i) => (
+              <div key={d.name}>
+                <span>
+                  <i style={{ background: colors[i] }} />
+                  {d.name}
+                </span>
+                <b>{d.value}%</b>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+      <div className="reports-lower">
+        <section className="panel strategy-panel">
+          <div className="panel-heading">
+            <div>
+              <h3>Trước và sau khi áp dụng</h3>
+            </div>
+            <span className="lift-pill">↗ +12,8%</span>
+          </div>
+          {[
+            ['Doanh thu', 61, 78, '+12,8%'],
+            ['Biên lợi nhuận', 48, 63, '+8,4%'],
+            ['Tỷ lệ chuyển đổi', 56, 68, '+6,1%'],
+          ].map(([label, a, b, v]) => (
+            <div className="compare-row" key={String(label)}>
+              <span>{label}</span>
+              <div className="compare-bars">
+                <i style={{ width: `${a}%` }} />
+                <b style={{ width: `${b}%` }} />
+              </div>
+              <strong>{v}</strong>
+            </div>
+          ))}
+        </section>
+        <section className="panel price-report">
+          <div className="panel-heading">
+            <div>
+              <h3>Biến động giá bán</h3>
+            </div>
+            <span className="trend-chip">↗ 4,6%</span>
+          </div>
+          <div className="mini-line-chart">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={series}>
+                <CartesianGrid stroke="#ebe9e0" strokeDasharray="3 5" vertical={false} />
+                <XAxis dataKey="d" />
+                <YAxis hide />
+                <Tooltip />
+                <Area dataKey="price" stroke="#b08a51" fill="#e9dcc0" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="price-report-foot">
+            <span>Giá bán trung bình</span>
+            <b>1.245.000₫</b>
+          </div>
+        </section>
+      </div>
+      <div className="report-note">
+        <Sparkles size={17} />
+        <span>
+          <b>Hiệu quả chiến lược giá tích cực</b>
+          <small>Doanh thu tăng 12,8% sau khi áp dụng định giá động.</small>
+        </span>
+        <span>{products.length} sản phẩm đang theo dõi</span>
+      </div>
+    </>
+  )
+}
+
+function SettingsPage({
+  settings,
+  setSettings,
+  save,
+}: {
+  settings: SettingsData
+  setSettings: (s: SettingsData) => void
+  save: () => void
+}) {
+  const update = <K extends keyof SettingsData>(key: K, value: SettingsData[K]) =>
+    setSettings({ ...settings, [key]: value })
+  const toggle = (
+    key: 'dynamicPricing' | 'autoUpdate' | 'emailAlerts' | 'lowStockAlerts',
+    label: string,
+    desc: string
+  ) => (
+    <div className="toggle-row">
+      <span>
+        <b>{label}</b>
+        <small>{desc}</small>
+      </span>
+      <button
+        role="switch"
+        aria-checked={settings[key]}
+        className={`toggle ${settings[key] ? 'on' : ''}`}
+        onClick={() => update(key, !settings[key])}
+      >
+        <i />
+      </button>
+    </div>
+  )
+  return (
+    <>
+      <Heading
+        title="Cài đặt"
+        description="Quản lý cửa hàng, thông báo và cách hệ thống tự vận hành."
+        action={
+          <button className="button button-primary" onClick={save}>
+            <Check size={16} /> Lưu thay đổi
+          </button>
+        }
+      />
+      <div className="settings-layout">
+        <div className="settings-main">
+          <section className="panel settings-panel">
+            <div className="settings-section-heading">
+              <span className="settings-icon">
+                <House size={18} />
+              </span>
+              <div>
+                <h3>Thông tin cửa hàng</h3>
+                <p>Thông tin hiển thị trong không gian quản trị.</p>
+              </div>
+            </div>
+            <div className="settings-fields">
+              <label>
+                Tên cửa hàng
+                <input
+                  value={settings.storeName}
+                  onChange={(e) => update('storeName', e.target.value)}
+                />
+              </label>
+              <label>
+                Email hỗ trợ
+                <input
+                  type="email"
+                  value={settings.email}
+                  onChange={(e) => update('email', e.target.value)}
+                />
+              </label>
+              <label>
+                Số điện thoại
+                <input
+                  value={settings.phone}
+                  onChange={(e) => update('phone', e.target.value)}
+                />
+              </label>
+              <label>
+                Múi giờ
+                <select defaultValue="hcm">
+                  <option value="hcm">(GMT+07:00) Hồ Chí Minh</option>
+                  <option>(GMT+00:00) UTC</option>
+                </select>
+              </label>
+            </div>
+          </section>
+          <section className="panel settings-panel">
+            <div className="settings-section-heading">
+              <span className="settings-icon">
+                <Gauge size={18} />
+              </span>
+              <div>
+                <h3>Định giá động</h3>
+                <p>Kiểm soát tự động hóa và biên độ thay đổi giá.</p>
+              </div>
+            </div>
+            {toggle(
+              'dynamicPricing',
+              'Kích hoạt hệ thống định giá',
+              'Tạo đề xuất giá theo dữ liệu cửa hàng'
+            )}
+            {toggle(
+              'autoUpdate',
+              'Tự động cập nhật giá',
+              'Áp dụng đề xuất khi đáp ứng quy tắc'
+            )}
+            <div className="settings-fields">
+              <label>
+                Giá sàn tối thiểu
+                <input
+                  type="number"
+                  value={settings.minPrice}
+                  onChange={(e) => update('minPrice', +e.target.value)}
+                />
+              </label>
+              <label>
+                Mức tăng giá tối đa (%)
+                <input
+                  type="number"
+                  value={settings.maxIncrease}
+                  onChange={(e) => update('maxIncrease', +e.target.value)}
+                />
+              </label>
+            </div>
+          </section>
+          <section className="panel settings-panel">
+            <div className="settings-section-heading">
+              <span className="settings-icon">
+                <Bell size={18} />
+              </span>
+              <div>
+                <h3>Thông báo</h3>
+                <p>Chọn các cập nhật bạn muốn nhận.</p>
+              </div>
+            </div>
+            {toggle(
+              'emailAlerts',
+              'Thông báo qua email',
+              'Nhận báo cáo định kỳ và thay đổi quan trọng'
+            )}
+            {toggle(
+              'lowStockAlerts',
+              'Cảnh báo tồn kho thấp',
+              'Thông báo khi sản phẩm còn dưới 10 đơn vị'
+            )}
+          </section>
+        </div>
+        <aside className="settings-aside">
+          <div className="settings-profile">
+            <span className="profile-avatar large-avatar">TA</span>
+            <b>Thùy Anh</b>
+            <small>Quản trị viên cửa hàng</small>
+            <span className="role-badge">
+              <ShieldCheck size={13} /> Toàn quyền quản trị
+            </span>
+          </div>
+          <section className="panel access-panel">
+            <h3>Thành viên cửa hàng</h3>
+            <div className="team-row">
+              <span className="mini-avatar">TA</span>
+              <span>
+                <b>Thùy Anh</b>
+                <small>Quản trị viên</small>
+              </span>
+              <span>Chủ cửa hàng</span>
+            </div>
+            <button
+              className="button button-outline full-width"
+              onClick={() =>
+                alert('Tính năng mời thành viên khả dụng khi kết nối tài khoản cửa hàng.')
+              }
+            >
+              + Mời thành viên
+            </button>
+          </section>
+          <div className="settings-tip">
+            <Leaf size={17} />
+            <span>
+              <b>Mẹo nhỏ</b>
+              <small>Cấu hình được tự lưu trên thiết bị này.</small>
+            </span>
+          </div>
+        </aside>
+      </div>
+      <div className="settings-mobile-save">
+        <button className="button button-primary" onClick={save}>
+          <Check size={16} /> Lưu thay đổi
+        </button>
+      </div>
+    </>
+  )
+}
+
+function Help({
+  faq,
+  setFaq,
+  toast,
+}: {
+  faq: number
+  setFaq: (n: number) => void
+  toast: (s: string) => void
+}) {
+  const topics = [
+    [
+      'Làm quen với định giá động',
+      'ShopMart phân tích giá cơ sở, mùa vụ, nhu cầu và tồn kho để đề xuất giá. Bạn có thể xem lý do trong tab Quản lý giá.',
+    ],
+    [
+      'Thiết lập quy tắc giá',
+      'Mở Định giá động → Quy tắc giá. Điều chỉnh hệ số và xem giá mẫu thay đổi ngay trước khi áp dụng.',
+    ],
+    [
+      'Quản lý sản phẩm',
+      'Mở Sản phẩm để tìm kiếm, lọc danh mục, xem tồn kho và giá. Dùng Thêm sản phẩm để tạo sản phẩm mới.',
+    ],
+    [
+      'Xuất báo cáo cửa hàng',
+      'Trong Báo cáo, chọn khoảng thời gian rồi xuất dữ liệu CSV tương thích Excel hoặc mở hộp thoại in để lưu PDF.',
+    ],
+  ]
+  return (
+    <>
+      <Heading
+        title="Trợ giúp"
+        description="Tìm câu trả lời nhanh hoặc kết nối với đội ngũ ShopMart."
+        action={
+          <button
+            className="button button-outline"
+            onClick={() => toast('Đã gửi yêu cầu hỗ trợ')}
+          >
+            <CircleHelp size={16} /> Liên hệ hỗ trợ
+          </button>
+        }
+      />
+      <div className="help-layout">
+        <section className="panel help-topics">
+          <h3>Bắt đầu từ điều bạn cần</h3>
+          {topics.map(([q, a], i) => (
+            <div className={`faq-item ${faq === i ? 'open' : ''}`} key={q}>
+              <button onClick={() => setFaq(faq === i ? -1 : i)}>
+                <span>0{i + 1}</span>
+                <b>{q}</b>
+                {faq === i ? <X size={15} /> : <Plus size={15} />}
+              </button>
+              {faq === i && <p>{a}</p>}
+            </div>
+          ))}
+        </section>
+        <aside className="help-aside">
+          <div className="support-visual">
+            <span className="support-head" />
+            <span className="support-body" />
+            <span className="support-headset" />
+          </div>
+          <section className="panel contact-panel">
+            <h3>Chúng tôi luôn ở đây.</h3>
+            <p>Đội ngũ hỗ trợ sẵn sàng giúp bạn.</p>
+            <div className="contact-detail">
+              <span>Hotline</span>
+              <b>1800 1234</b>
+            </div>
+            <div className="contact-detail">
+              <span>Email</span>
+              <b>support@shopmart.vn</b>
+            </div>
+            <button
+              className="button button-primary full-width"
+              onClick={() => toast('Đã mở yêu cầu hỗ trợ mới')}
+            >
+              Gửi yêu cầu <ArrowRight size={15} />
+            </button>
+            <small className="support-hours">Thứ 2 – Thứ 6 · 08:00 – 18:00</small>
+          </section>
+        </aside>
+      </div>
+    </>
+  )
+}
+
+function ProductModal({
+  mode,
+  product,
+  close,
+  edit,
+  save,
+}: {
+  mode: 'add' | 'edit' | 'detail'
+  product: Product | null
+  close: () => void
+  edit: () => void
+  save: (p: Product) => void
+}) {
+  const [name, setName] = useState(product?.name ?? '')
+  const [id, setId] = useState(product?.id ?? '')
+  const [cat, setCat] = useState<Category>(product?.category ?? 'Nội thất')
+  const [base, setBase] = useState(product?.base ?? 1000000)
+  const [current, setCurrent] = useState(product?.current ?? 1000000)
+  const [stock, setStock] = useState(product?.stock ?? 10)
+  const [imageUrl, setImageUrl] = useState(
+    product?.image ??
+      'https://images.unsplash.com/photo-1494438639946-1ebd1d20bf85?auto=format&fit=crop&w=720&q=82'
+  )
+  const [status, setStatus] = useState<Product['status']>(product?.status ?? 'Đang bán')
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault()
+    save({
+      id: id.trim() || `SM-${Date.now().toString().slice(-6)}`,
+      name,
+      category: cat,
+      image: imageUrl,
+      base,
+      current,
+      stock,
+      status,
+      description: product?.description,
+      rating: product?.rating ?? 4.8,
+      reviewCount: product?.reviewCount ?? 15,
+    })
+  }
+  return (
+    <div
+      className="modal-backdrop"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) close()
+      }}
+    >
+      <section className="product-modal" role="dialog" aria-modal="true">
+        <div className="modal-heading">
+          <div>
+            <h2>
+              {mode === 'detail'
+                ? product?.name
+                : mode === 'edit'
+                ? 'Chỉnh sửa sản phẩm'
+                : 'Sản phẩm mới'}
+            </h2>
+          </div>
+          <button className="icon-button" onClick={close}>
+            <X size={18} />
+          </button>
+        </div>
+        {mode === 'detail' && product ? (
+          <>
+            <img className="detail-photo" src={product.image} alt={product.name} />
+            <div className="detail-meta">
+              <span>{product.category}</span>
+              <span>{product.id}</span>
+              <span>{product.stock} sản phẩm trong kho</span>
+            </div>
+            <div className="detail-prices">
+              <div>
+                <small>Giá cơ sở</small>
+                <b>{money(product.base)}</b>
+              </div>
+              <div>
+                <small>Giá hiện tại</small>
+                <b>{money(product.current)}</b>
+              </div>
+            </div>
+            <button
+              className="button button-primary full-width"
+              onClick={edit}
+            >
+              <Pencil size={15} /> Chỉnh sửa sản phẩm
+            </button>
+          </>
+        ) : (
+          <form onSubmit={submit}>
+            <div className="form-grid">
+              <label>
+                Tên sản phẩm
+                <input
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                />
+              </label>
+              <label>
+                Mã sản phẩm
+                <input value={id} onChange={(e) => setId(e.target.value)} />
+              </label>
+              <label>
+                Danh mục
+                <select
+                  value={cat}
+                  onChange={(e) => setCat(e.target.value as Category)}
+                >
+                  {categories.map((c) => (
+                    <option key={c}>{c}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Trạng thái
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value as Product['status'])}
+                >
+                  <option>Đang bán</option>
+                  <option>Tạm ẩn</option>
+                </select>
+              </label>
+              <label>
+                Giá cơ sở (₫)
+                <input
+                  type="number"
+                  min="0"
+                  value={base}
+                  onChange={(e) => setBase(+e.target.value)}
+                />
+              </label>
+              <label>
+                Giá hiện tại (₫)
+                <input
+                  type="number"
+                  min="0"
+                  value={current}
+                  onChange={(e) => setCurrent(+e.target.value)}
+                />
+              </label>
+              <label>
+                Số lượng tồn kho
+                <input
+                  type="number"
+                  min="0"
+                  value={stock}
+                  onChange={(e) => setStock(+e.target.value)}
+                />
+              </label>
+              <label className="form-wide">
+                URL hình ảnh
+                <input
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                />
+              </label>
+            </div>
+            <div className="modal-actions">
+              <button
+                type="button"
+                className="button button-outline"
+                onClick={close}
+              >
+                Hủy
+              </button>
+              <button className="button button-primary">
+                <Check size={15} />
+                {mode === 'edit' ? 'Lưu thay đổi' : 'Thêm sản phẩm'}
+              </button>
+            </div>
+          </form>
+        )}
+      </section>
+    </div>
+  )
+}
+
 export default App

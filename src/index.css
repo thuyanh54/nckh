@@ -1,16 +1,71 @@
 @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Caveat:wght@500;600;700&family=Lora:wght@600;700&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap');
 
-:root{font-family:'Be Vietnam Pro',sans-serif;--sans:'Be Vietnam Pro',sans-serif;--serif:'Lora',serif;--script:'Caveat',cursive;--number:'Plus Jakarta Sans',sans-serif;font-synthesis:none;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;color:#252a26;background:#faf8f3;font-weight:400;font-size:16px}
-*{box-sizing:border-box}
-body{margin:0;min-width:320px;min-height:100vh;background:#faf8f3}
-button,input,select{font:inherit}
-.font-sans{font-family:var(--sans)}
-.font-serif{font-family:var(--serif)}
-.font-script{font-family:var(--script)}
-.font-number{font-family:var(--number)}
-.font-bold{font-weight:700}
-.font-semibold{font-weight:600}
-.uppercase{text-transform:uppercase}
-button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #6f986f;outline-offset:2px}
-::selection{background:#dce7d5;color:#174b35}
-#root{min-height:100vh}
+:root {
+  font-family: 'Be Vietnam Pro', sans-serif;
+  --sans: 'Be Vietnam Pro', sans-serif;
+  --serif: 'Lora', serif;
+  --script: 'Caveat', cursive;
+  --number: 'Plus Jakarta Sans', sans-serif;
+  
+  /* Brand color system */
+  --forest: #174b35;
+  --forest-dark: #0f3525;
+  --forest-light: #246346;
+  --green: #286747;
+  --green-light: #3d8861;
+  --ink: #252a26;
+  --muted: #777d74;
+  --line: #e8e5dc;
+  --paper: #faf8f3;
+  --white: #fffefa;
+  --sage: #dce7d5;
+  --gold: #c58b45;
+  --danger: #bd4538;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: var(--ink);
+  background: var(--paper);
+  font-weight: 400;
+  font-size: 16px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+button, input, select, textarea {
+  font: inherit;
+}
+
+.font-sans { font-family: var(--sans); }
+.font-serif { font-family: var(--serif); }
+.font-script { font-family: var(--script); }
+.font-number { font-family: var(--number); }
+.font-bold { font-weight: 700; }
+.font-semibold { font-weight: 600; }
+.uppercase { text-transform: uppercase; }
+
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid #6f986f;
+  outline-offset: 2px;
+}
+
+::selection {
+  background: #dce7d5;
+  color: #174b35;
+}
+
+#root {
+  min-height: 100vh;
+}
